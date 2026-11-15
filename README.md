@@ -12,6 +12,16 @@ Web con las canciones del cancionero Meribá, sus acordes y un **controlador de 
 - Atajos de teclado: `+` / `-` cambian el tono, `←` / `→` pasan de canción.
 - El tono elegido para cada canción se recuerda en el navegador.
 
+## Modo en directo
+
+En la versión publicada en Claude aparece el botón **En directo**:
+
+- **Emitir**: comparte tu canción, el tono y por dónde vas (desplazamiento).
+- **Recibir**: tu pantalla sigue al emisor. Si navegas por tu cuenta, el seguimiento se pausa y aparece "Volver al directo".
+- Si hay varios emisores, cada receptor elige a quién seguir.
+
+Protocolo (capacidad `room`): cada participante publica `presence { role, name, follow }` y el emisor envía en el tema `sync` el estado absoluto `{ v: 1, seq, song, shift, scroll }` en cada cambio, cuando entra alguien y cada 3 s. Fuera de Claude (GitHub Pages o archivo local) el botón no aparece y la web funciona igual.
+
 ## Uso
 
 Abre `index.html` en el navegador (funciona sin servidor) o publícalo con GitHub Pages.

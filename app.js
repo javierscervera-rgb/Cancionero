@@ -147,14 +147,19 @@
     } else v.hidden = true;
   }
 
-  function setShift(n) {
+  // Avisos de cambio para el modo en directo (live.js)
+  const listeners = [];
+  const notify = (why) => listeners.forEach((fn) => { try { fn(why); } catch (e) { /* ignorar */ } });
+
+  function setShift(n, fromSync) {
     const s = state.current;
     if (!s) return;
     n = signed(n);
     if (n) state.shifts[s.code] = n; else delete state.shifts[s.code];
-    store.set('shifts', state.shifts);
+    if (!fromSync) store.set('shifts', state.shifts);
     renderSheet();
     renderList();
+    if (!fromSync) notify('shift');
   }
 
   function showSong(code) {
@@ -188,7 +193,37 @@
     if (a && a.scrollIntoView) a.scrollIntoView({ block: 'nearest' });
   }
 
-  function route() { showSong(decodeURIComponent(location.hash.replace(/^#\/?/, ''))); }
+  let syncHash = null; // hash que viene del emisor (no cuenta como navegación propia)
+  function route() {
+    const code = decodeURIComponent(location.hash.replace(/^#\/?/, ''));
+    showSong(code);
+    const fromSync = syncHash !== null && syncHash === code;
+    syncHash = null;
+    if (!fromSync) notify('song');
+  }
+
+  // Interfaz para live.js
+  window.App = {
+    getState() {
+      const s = state.current;
+      return { song: s ? s.code : '', shift: s ? (state.shifts[s.code] || 0) : 0 };
+    },
+    apply({ song, shift }) {
+      const cur = state.current ? state.current.code : '';
+      if (typeof song === 'string' && song !== cur) {
+        if (song && !SONGS.some((x) => x.code === song)) return;
+        syncHash = song;
+        location.hash = song ? '#' + song : '';
+      }
+      const target = song ? SONGS.find((x) => x.code === song) : null;
+      if (target && Number.isInteger(shift) && shift >= -11 && shift <= 11 &&
+          signed(shift) !== signed(state.shifts[target.code] || 0)) {
+        if (signed(shift)) state.shifts[target.code] = signed(shift); else delete state.shifts[target.code];
+        if (state.current === target) { renderSheet(); renderList(); }
+      }
+    },
+    onChange(fn) { listeners.push(fn); }
+  };
 
   // ---------- Eventos ----------
   $('upBtn').onclick = () => setShift((state.shifts[state.current.code] || 0) + 1);

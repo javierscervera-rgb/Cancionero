@@ -159,3 +159,36 @@ select {
   .content { padding: 0; }
   .sheet .ch { color: #000; }
 }
+
+/* En directo */
+.live-btn { display: inline-flex; align-items: center; gap: 7px; }
+.live-btn .dot, .live-bar .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: 0 0 auto; }
+.live-btn.on { border-color: var(--accent); color: var(--accent); }
+.live-btn.on .dot, .live-bar .dot { background: #d93a2b; animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+.live-panel {
+  position: fixed; top: 62px; right: 12px; z-index: 30; width: min(340px, calc(100vw - 24px));
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px;
+  box-shadow: 0 18px 40px -18px rgba(0,0,0,.45);
+}
+.live-panel h3 { margin: 0 0 4px; font-family: var(--serif); font-weight: 500; font-size: 20px; }
+.live-panel .small { font-size: 13px; line-height: 1.45; margin: 0 0 12px; }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 12px; }
+.seg button { border: 0; background: var(--bg); padding: 9px 4px; cursor: pointer; font-size: 13.5px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button.on { background: var(--accent); color: #fff; }
+.field { display: grid; gap: 5px; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.field input, .field select { height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); padding: 0 10px; font-family: var(--sans); font-weight: 400; color: var(--ink); font-size: 14px; }
+.live-status { font-size: 13.5px; margin: 10px 0 0; }
+.live-flash { font-size: 13px; color: var(--accent); margin: 8px 0 0; }
+.live-bar {
+  position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20;
+  display: flex; align-items: center; gap: 10px; padding: 9px 10px 9px 14px; border-radius: 999px;
+  background: var(--ink); color: var(--bg); font-size: 13.5px; box-shadow: 0 10px 30px -10px rgba(0,0,0,.5);
+  max-width: calc(100vw - 24px); white-space: nowrap;
+}
+.live-bar #liveBarText { cursor: pointer; overflow: hidden; text-overflow: ellipsis; }
+.live-bar button { border: 0; border-radius: 999px; background: var(--accent); color: #fff; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+body.live-on .content { padding-bottom: 110px; }
+@media (max-width: 820px) { .live-btn .lbl { display: none; } .live-btn.on .lbl { display: inline; } }
+@media print { .live-btn, .live-panel, .live-bar { display: none !important; } }
