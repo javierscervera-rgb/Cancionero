@@ -69,17 +69,19 @@
   function isChordLine(line) {
     const toks = line.replace(/\([^)]*\)/g, ' ').trim().split(/\s+/).filter(Boolean);
     if (!toks.length) return false;
-    let chords = 0, words = 0;
+    let latin = 0, us = 0, words = 0;
     for (const t of toks) {
       const pieces = splitToken(t).filter(p => !p.punct);
       if (!pieces.length) continue;
-      if (pieces.every(p => parseChord(p.text))) chords++;
+      if (pieces.every(p => p.text.match(CHORD_RE))) latin++;
+      else if (pieces.every(p => parseUS(p.text))) us++;
       else if (ANNOT_RE.test(t)) continue;
       else words++;
     }
+    // Mezcla de notaciones (p. ej. «VEN A MI»): la notación minoritaria cuenta como palabra
+    if (latin && us) { if (us > latin) { words += latin; latin = 0; } else { words += us; us = 0; } }
+    const chords = latin + us;
     if (!chords) return false;
-    // Una única palabra que coincide con un acorde (p. ej. "Mi" o "Sí") se trata como letra
-    // si va en minúsculas, salvo que la línea solo tenga eso y esté en mayúsculas
     return chords / (chords + words) >= 0.6;
   }
 
