@@ -16,6 +16,8 @@
     mono: store.get('mono', false),
     shifts: store.get('shifts', {}),
     category: null,
+    para: null,
+    paraCount: 0,
     query: '',
     current: null
   };
@@ -102,26 +104,32 @@
     if (!s) return;
     const shift = state.shifts[s.code] || 0;
     const flats = s.key ? C.prefersFlats(s.key.semi + shift, s.key.minor) : false;
-    const out = [];
-    let blank = 0;
+    // Agrupa en párrafos: los bloques separados por líneas en blanco
+    const paras = [];
+    let cur = [];
+    const flush = () => { if (cur.length) { paras.push(cur); cur = []; } };
     s.lines.forEach((line, i) => {
       if (s.chordFlags[i]) {
         if (state.lyricsOnly) return;
-        out.push('<span class="cl">' + C.transposeLine(line, shift, flats, state.notation)
+        cur.push('<span class="cl">' + C.transposeLine(line, shift, flats, state.notation)
           .map((g) => g.chord ? `<b class="ch">${esc(g.text)}</b>` : esc(g.text)).join('') + '</span>');
-        blank = 0;
+      } else if (!line.trim()) {
+        flush();
       } else {
-        if (!line.trim()) { blank++; if (blank > (state.lyricsOnly ? 1 : 2)) return; }
-        else blank = 0;
         const isLabel = line.trim().length < 40 &&
           /^\s*(\(.*\)|(CORO|VERSO|PUENTE|INTRO|ESTRIBILLO|CEJILLA)\b.*)\s*$/i.test(line);
-        out.push(isLabel ? `<span class="lbl">${esc(line)}</span>` : esc(line));
+        cur.push(isLabel ? `<span class="lbl">${esc(line)}</span>` : esc(line));
       }
     });
-    $('sheet').innerHTML = out.join('\n');
+    flush();
+    state.paraCount = paras.length;
+    if (state.para !== null && state.para >= paras.length) state.para = null;
+    $('sheet').innerHTML = paras.map((p, i) =>
+      `<pre class="para${i === state.para ? ' sel' : ''}" data-i="${i}" tabindex="0">${p.join('\n')}</pre>`).join('');
     $('sheet').style.fontSize = state.font + 'px';
     $('sheet').classList.toggle('mono', state.mono);
     fitSheet();
+    if (state.para !== null) requestAnimationFrame(() => centerPara(state.para, false));
 
     // Controles
     const sel = $('keySelect');
@@ -169,6 +177,30 @@
   }
   window.addEventListener('resize', () => fitSheet());
 
+  // ---------- Párrafos: seleccionar uno lo centra en la pantalla ----------
+  function topOffset() {
+    const t = document.querySelector('.top'), b = document.querySelector('.chipbar');
+    return (t ? t.offsetHeight : 0) + (b ? b.offsetHeight : 0);
+  }
+  function centerPara(i, smooth) {
+    const el = $('sheet').querySelector(`.para[data-i="${i}"]`);
+    if (!el) return;
+    const r = el.getBoundingClientRect(), top = topOffset(), avail = window.innerHeight - top;
+    let y = window.scrollY + r.top - top - Math.max(12, (avail - r.height) / 2);
+    window.scrollTo({ top: Math.max(0, y), behavior: smooth === false ? 'auto' : 'smooth' });
+  }
+  function selectPara(i, fromSync) {
+    if (i !== null && (!Number.isInteger(i) || i < 0 || i >= state.paraCount)) return;
+    state.para = i;
+    $('sheet').querySelectorAll('.para').forEach((el) => el.classList.toggle('sel', +el.dataset.i === i));
+    if (i !== null) centerPara(i);
+    if (!fromSync) notify('para');
+  }
+  $('sheet').addEventListener('click', (e) => {
+    const el = e.target.closest('.para');
+    if (el) selectPara(+el.dataset.i);
+  });
+
   function setShift(n, fromSync) {
     const s = state.current;
     if (!s) return;
@@ -193,6 +225,7 @@
       renderList();
       return;
     }
+    if (state.current !== s) state.para = null;
     state.current = s;
     $('welcome').hidden = true;
     $('song').hidden = false;
@@ -225,9 +258,9 @@
   window.App = {
     getState() {
       const s = state.current;
-      return { song: s ? s.code : '', shift: s ? (state.shifts[s.code] || 0) : 0 };
+      return { song: s ? s.code : '', shift: s ? (state.shifts[s.code] || 0) : 0, para: s ? state.para : null };
     },
-    apply({ song, shift }) {
+    apply({ song, shift, para }, opts) {
       const cur = state.current ? state.current.code : '';
       if (typeof song === 'string' && song !== cur) {
         if (song && !SONGS.some((x) => x.code === song)) return;
@@ -239,6 +272,11 @@
           signed(shift) !== signed(state.shifts[target.code] || 0)) {
         if (signed(shift)) state.shifts[target.code] = signed(shift); else delete state.shifts[target.code];
         if (state.current === target) { renderSheet(); renderList(); }
+      }
+      if (target && (para === null || Number.isInteger(para)) && !(opts && opts.noPara)) {
+        // tras cambiar de canción, esperar a que se pinte
+        const go = () => { if (state.current === target && para !== state.para) selectPara(para, true); };
+        if (state.current === target) go(); else setTimeout(go, 120);
       }
     },
     onChange(fn) { listeners.push(fn); },
@@ -300,6 +338,8 @@
     if (e.target.matches('input, select, textarea') || !state.current) return;
     if (e.key === '+' || e.key === '=') setShift((state.shifts[state.current.code] || 0) + 1);
     else if (e.key === '-') setShift((state.shifts[state.current.code] || 0) - 1);
+    else if (e.key === 'ArrowDown' && state.paraCount) { e.preventDefault(); selectPara(state.para === null ? 0 : Math.min(state.paraCount - 1, state.para + 1)); }
+    else if (e.key === 'ArrowUp' && state.paraCount) { e.preventDefault(); selectPara(state.para === null ? 0 : Math.max(0, state.para - 1)); }
     else if (e.key === 'ArrowRight' && SONGS[state.current.index + 1]) location.hash = '#' + SONGS[state.current.index + 1].code;
     else if (e.key === 'ArrowLeft' && SONGS[state.current.index - 1]) location.hash = '#' + SONGS[state.current.index - 1].code;
   });

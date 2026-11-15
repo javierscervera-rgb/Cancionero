@@ -9,14 +9,15 @@ Web con las canciones del cancionero Meribá, sus acordes y un **controlador de 
 - Cuando el cancionero tenía la misma canción en otro tono, aparece un acceso directo a ese tono.
 - Notación latina (DO RE MI) o americana (C D E).
 - Tamaño de letra, modo "solo letra", fuente monoespaciada opcional, tema claro/oscuro.
-- Atajos de teclado: `+` / `-` cambian el tono, `←` / `→` pasan de canción.
+- Las canciones están en párrafos: al tocar uno se resalta y se centra en la pantalla.
+- Atajos de teclado: `+` / `-` cambian el tono, `↑` / `↓` cambian de párrafo, `←` / `→` pasan de canción.
 - El tono elegido para cada canción se recuerda en el navegador.
 
 ## Modo en directo
 
 En la versión publicada en Claude aparece el botón **En directo**:
 
-- **Emitir**: comparte tu canción, el tono y por dónde vas (desplazamiento).
+- **Emitir**: comparte tu canción, el tono y el párrafo que marcas (al tocar un párrafo se centra en la pantalla).
 - **Recibir**: tu pantalla sigue al emisor. Si navegas por tu cuenta, el seguimiento se pausa y aparece "Volver al directo".
 - Si hay varios emisores, cada receptor elige a quién seguir.
 
@@ -25,7 +26,7 @@ Transporte:
 - **En Claude**: la capacidad `room` de la plataforma (solo emite quien tiene permiso de colaborador).
 - **En GitHub Pages**: sin servidor propio, a través de un broker MQTT público por WebSocket seguro (`broker.emqx.io`, con `broker.hivemq.com` de reserva). Funciona en cualquier red donde se pueda navegar. Todos escriben el mismo **código de sala** (o abren un enlace `?sala=codigo`). El estado del emisor queda retenido en el broker, así que quien entra tarde lo recibe al instante. Los mensajes del broker público no van cifrados de extremo a extremo (solo contienen el código de canción, el tono y la posición). Cualquiera que conozca el código puede emitir; cada receptor elige a quién sigue.
 
-Protocolo: cada participante publica `presence { role, name, follow }` y el emisor envía en el tema `sync` el estado absoluto `{ v: 1, seq, song, shift, scroll }` en cada cambio, cuando entra alguien y cada 3 s. Sin internet el resto de la web funciona igual.
+Protocolo: cada participante publica `presence { role, name, follow }` y el emisor envía en el tema `sync` el estado absoluto `{ v: 2, seq, song, shift, para }` en cada cambio, cuando entra alguien y cada 3 s. Sin internet el resto de la web funciona igual.
 
 ## Uso
 

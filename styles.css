@@ -228,3 +228,26 @@ body.emitting .chipbar .chips { touch-action: pan-x pan-y; }
 body.tb-collapsed .content { padding-right: 40px; }
 @media (max-width: 820px) { body.tb-collapsed .content { padding-right: 14px; } body.tb-collapsed .song-head { padding-right: 48px; } }
 .link-btn { border: 0; background: none; color: var(--accent); cursor: pointer; font-size: 13px; text-decoration: underline; padding: 0; margin: -2px 0 10px; }
+
+/* Párrafos seleccionables */
+.sheet { white-space: normal; }
+.sheet .para {
+  font: inherit; white-space: pre; margin: 0 0 6px -12px; padding: 8px 12px; border-radius: 12px;
+  border-left: 3px solid transparent; cursor: pointer; transition: background .25s, border-color .25s;
+  width: max-content; min-width: calc(100% + 12px); outline: none;
+}
+.sheet .para:hover { background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
+.sheet .para.sel { background: var(--accent-soft); border-left-color: var(--accent); }
+.sheet .para:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+body.emitting .sheet .para { width: auto; }
+
+/* Barra de estado reducida al punto (lateral derecho) */
+.live-bar { transition: left .35s ease, right .35s ease, transform .35s ease, padding .35s ease, width .35s ease, background .35s; }
+.live-bar.mini {
+  left: auto; right: 12px; transform: none; width: 40px; height: 40px; padding: 0; justify-content: center; gap: 0;
+  background: var(--panel); border: 1px solid var(--line); cursor: pointer;
+}
+.live-bar.mini #liveBarText, .live-bar.mini button { display: none; }
+.live-bar.mini .dot { width: 12px; height: 12px; }
+/* Espacio al final para poder centrar los últimos párrafos */
+.sheet { padding-bottom: 45vh; }

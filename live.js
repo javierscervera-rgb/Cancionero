@@ -3,9 +3,9 @@
 //
 // Protocolo (capacidad `room` de la página publicada en Claude):
 //   presence: { role: "emisor" | "receptor", name, follow: { of: <peer del emisor> } }
-//   evento "sync" (solo emisores): { v: 1, seq, song, shift, scroll }
+//   evento "sync" (solo emisores): { v: 2, seq, song, shift, para }
 //     - estado ABSOLUTO; se reenvía en cada cambio, cuando entra alguien nuevo y cada 3 s
-//     - scroll: fracción 0..1 de la partitura que está en lo alto de la pantalla (o null)
+//     - para: índice del párrafo seleccionado por el emisor (se centra en pantalla) o null
 // Transporte:
 //   - Dentro de Claude: capacidad `room` de la plataforma.
 //   - Fuera de Claude (GitHub Pages): broker MQTT público por WebSocket seguro, sin servidor
@@ -36,34 +36,10 @@
     connected: false
   };
 
-  // ---------- Medición del desplazamiento ----------
-  function topOffset() {
-    const top = document.querySelector('.top'), bar = document.querySelector('.chipbar');
-    return (top ? top.offsetHeight : 0) + (bar ? bar.offsetHeight : 0);
-  }
-  function currentScroll() {
-    const sheet = $('sheet');
-    if (!sheet || $('song').hidden) return null;
-    const r = sheet.getBoundingClientRect();
-    if (!r.height) return null;
-    const f = (topOffset() + 8 - r.top) / r.height;
-    return Math.max(0, Math.min(1, Math.round(f * 1000) / 1000));
-  }
-  function applyScroll(f) {
-    if (typeof f !== 'number' || !isFinite(f)) return;
-    const sheet = $('sheet');
-    if (!sheet || $('song').hidden) return;
-    const r = sheet.getBoundingClientRect();
-    const y = window.scrollY + r.top + Math.max(0, Math.min(1, f)) * r.height - topOffset() - 8;
-    live.applying = true;
-    window.scrollTo({ top: f <= 0 ? 0 : y, behavior: 'smooth' });
-    setTimeout(() => { live.applying = false; }, 600);
-  }
-
   // ---------- Emisor ----------
   function snapshot() {
     const s = window.App.getState();
-    return { v: 1, seq: ++live.seq, song: s.song, shift: s.shift, scroll: currentScroll() };
+    return { v: 2, seq: ++live.seq, song: s.song, shift: s.shift, para: s.para };
   }
   function send() {
     if (live.mode !== 'emisor' || !live.room) return;
@@ -74,39 +50,25 @@
       }
     });
   }
-  let scrollTimer = null, lastScrollSend = 0;
-  function onScroll() {
-    if (live.mode !== 'emisor') return;
-    const now = Date.now();
-    clearTimeout(scrollTimer);
-    if (now - lastScrollSend > 250) { lastScrollSend = now; send(); }
-    else scrollTimer = setTimeout(() => { lastScrollSend = Date.now(); send(); }, 250);
-  }
-
   // ---------- Receptor ----------
   function onSync(msg) {
     if (live.mode !== 'receptor' || msg.sameTab) return;
     const d = msg.data;
-    if (!d || typeof d !== 'object' || d.v !== 1 || typeof d.song !== 'string') return;
+    if (!d || typeof d !== 'object' || d.v !== 2 || typeof d.song !== 'string') return;
     if (!live.following) setFollowing(msg.peer);
     if (msg.peer !== live.following) return;
     const prevSong = live.last && live.last.song;
-    live.last = { song: d.song, shift: d.shift, scroll: d.scroll };
+    live.last = { song: d.song, shift: d.shift, para: Number.isInteger(d.para) ? d.para : null };
     if (live.paused) { render(); return; }
-    applyLast(prevSong !== d.song);
+    applyLast();
     render();
   }
-  function applyLast(songChanged) {
+  function applyLast() {
     const d = live.last;
     if (!d) return;
     live.applying = true;
-    window.App.apply({ song: d.song, shift: d.shift });
-    live.applying = false;
-    if (live.followScroll && d.scroll !== null && d.scroll !== undefined) {
-      // tras cambiar de canción, esperar a que se pinte
-      if (songChanged) setTimeout(() => applyScroll(d.scroll), 80);
-      else applyScroll(d.scroll);
-    }
+    window.App.apply({ song: d.song, shift: d.shift, para: d.para }, { noPara: !live.followScroll });
+    setTimeout(() => { live.applying = false; }, 200);
   }
   function setFollowing(peer) {
     live.following = peer;
@@ -121,7 +83,8 @@
     if (live.mode === 'emisor') send();
     else if (live.mode === 'receptor' && !live.applying && live.last && !live.paused) {
       const s = window.App.getState();
-      if (s.song !== live.last.song || s.shift !== live.last.shift) { live.paused = true; render(); }
+      if (s.song !== live.last.song || s.shift !== live.last.shift ||
+          (live.followScroll && s.para !== live.last.para)) { live.paused = true; render(); }
     }
   });
 
@@ -215,7 +178,7 @@
     else status = live.paused ? 'En pausa: estás navegando por tu cuenta.' : 'Sigues la pantalla del emisor.';
     $('liveStatus').textContent = status;
 
-    // barra inferior
+    // barra inferior: completa 10 s cada vez que cambia su texto; luego se reduce al punto
     if (live.mode === 'receptor') {
       bar.hidden = false;
       const idx = ems.findIndex((p) => p.peer === live.following);
@@ -227,7 +190,17 @@
       $('liveBarText').textContent = 'Emitiendo · ' + (receivers.length === 1 ? '1 receptor' : receivers.length + ' receptores');
       $('liveBarBtn').hidden = true;
     } else bar.hidden = true;
+    const barKey = bar.hidden ? '' : $('liveBarText').textContent + '|' + $('liveBarBtn').hidden;
+    if (barKey !== live.barKey) { live.barKey = barKey; if (barKey) expandBar(); }
+    if (live.paused) { bar.classList.remove('mini'); clearTimeout(live.barTimer); }
     document.body.classList.toggle('live-on', live.mode !== 'off');
+  }
+
+  function expandBar() {
+    const bar = $('liveBar');
+    bar.classList.remove('mini');
+    clearTimeout(live.barTimer);
+    live.barTimer = setTimeout(() => { if (!live.paused) bar.classList.add('mini'); }, 10000);
   }
 
   let flashTimer = null;
@@ -249,7 +222,7 @@
     panel.id = 'livePanel'; panel.className = 'live-panel'; panel.hidden = true;
     panel.innerHTML = `
       <h3>Ver en directo</h3>
-      <p class="muted small">Quien emite comparte su canción, el tono y por dónde va. Quien recibe lo ve igual en su pantalla.</p>
+      <p class="muted small">Quien emite comparte su canción, el tono y el párrafo que marca. Quien recibe lo ve igual en su pantalla.</p>
       <div class="seg" role="group" aria-label="Modo">
         <button data-mode="off">Desactivado</button>
         <button data-mode="emisor">Emitir</button>
@@ -267,7 +240,7 @@
       <label class="field" id="liveFollowRow" hidden>Seguir a
         <select id="liveFollow"></select>
       </label>
-      <label class="toggle" id="liveScrollRow" hidden><input type="checkbox" id="liveScroll"> Seguir también el desplazamiento</label>
+      <label class="toggle" id="liveScrollRow" hidden><input type="checkbox" id="liveScroll"> Centrar el párrafo que marque el emisor</label>
       <p class="live-status" id="liveStatus"></p>
       <p class="live-flash" id="liveFlash" hidden></p>`;
     document.body.appendChild(panel);
@@ -275,6 +248,8 @@
     const bar = document.createElement('div');
     bar.id = 'liveBar'; bar.className = 'live-bar'; bar.hidden = true;
     bar.innerHTML = '<span class="dot"></span><span id="liveBarText"></span><button id="liveBarBtn" hidden>Volver al directo</button>';
+    bar.setAttribute('role', 'status');
+    bar.addEventListener('click', (e) => { if (bar.classList.contains('mini')) { e.stopPropagation(); expandBar(); } });
     document.body.appendChild(bar);
 
     btn.onclick = () => {
@@ -311,9 +286,8 @@
     $('liveFollow').onchange = (e) => { setFollowing(e.target.value); live.last = null; render(); };
     $('liveScroll').checked = live.followScroll;
     $('liveScroll').onchange = (e) => { live.followScroll = e.target.checked; store.set('liveScroll', live.followScroll); };
-    $('liveBarBtn').onclick = () => { live.paused = false; applyLast(true); render(); };
-    $('liveBarText').onclick = () => btn.click();
-    window.addEventListener('scroll', onScroll, { passive: true });
+    $('liveBarBtn').onclick = () => { live.paused = false; applyLast(); render(); };
+    $('liveBarText').onclick = (e) => { if (!bar.classList.contains('mini')) { e.stopPropagation(); btn.click(); } };
   }
 
   // ---------- Conexión ----------
