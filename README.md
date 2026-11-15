@@ -7,7 +7,7 @@ Web con cancioneros (listas de reproducción), sus acordes y un **controlador de
 En el lateral izquierdo se elige el cancionero; cada uno tiene sus propias colecciones:
 
 - **Cancionero Meribá** (94 canciones, de `CANCIONERO MERIBÁ.pages`) — `songs.js`.
-- **Adoración** (47 canciones, del PDF «ADORACIÓN NATALIA») — `songs-adoracion.js`. El PDF mezcla capturas, escaneos y anotaciones a mano, así que se transcribió página a página (OCR + revisión). Las canciones que coinciden con el Cancionero Meribá se toman de él, en el tono del PDF. Colecciones: Espíritu Santo, Virgen María, Navidad y Misa.
+- **Adoración** (47 canciones, del PDF «ADORACIÓN NATALIA») — `songs-adoracion.js`. El PDF mezcla capturas, escaneos y anotaciones a mano, así que se transcribió página a página (OCR + revisión). Las canciones que coinciden con el Cancionero Meribá se toman de él, en el tono del PDF. Colecciones: Entrada, Adorando, Espíritu Santo, Virgen María, Bendición y Navidad.
 - **Cancionero Parroquia** — San Sebastián Mártir (119 canciones, del PDF) — `songs-parroquia.js`. Colecciones según su índice. De los acordes dobles se conserva solo el primero; la minúscula indica acorde menor (lam → LAm). *Quebrántame (Jesed)*, que en el PDF es una imagen, está transcrita a mano.
 
 ## Funciones
@@ -20,6 +20,10 @@ En el lateral izquierdo se elige el cancionero; cada uno tiene sus propias colec
 - Las canciones están en párrafos: al tocar uno se resalta y se centra en la pantalla.
 - Atajos de teclado: `+` / `-` cambian el tono, `↑` / `↓` cambian de párrafo, `←` / `→` pasan de canción.
 - El tono elegido para cada canción se recuerda en el navegador.
+
+## Comentarios
+
+Botón **💬 Comentario** junto al título: una nota para la canción (p. ej. «empezar solo voz», «capo 2») que se ve encima de la letra pero **no** en el modo Pantalla. Se guarda en el dispositivo y se exporta/importa con el resto de cambios.
 
 ## Colecciones
 

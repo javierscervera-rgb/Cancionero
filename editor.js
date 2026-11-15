@@ -45,7 +45,7 @@
       <div class="ed-foot small">
         <span class="muted" id="edNote">Los cambios se guardan en este dispositivo.</span>
         <span class="ed-spacer"></span>
-        <button class="link-btn" id="edExport">Exportar mis cambios y colecciones</button>
+        <button class="link-btn" id="edExport">Exportar mis cambios, colecciones y comentarios</button>
         <label class="link-btn">Importar<input type="file" id="edImport" accept="application/json,.json" hidden></label>
       </div>
     </div>`;
@@ -176,7 +176,7 @@
     a.download = 'cancionero-cambios.json';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    $('edNote').textContent = `Exportados: ${n} canción(es) editada(s) y tus colecciones.`;
+    $('edNote').textContent = `Exportados: ${n} canción(es) editada(s), tus colecciones y tus comentarios.`;
   };
   $('edImport').onchange = (e) => {
     const f = e.target.files && e.target.files[0];

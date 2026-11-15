@@ -49,6 +49,7 @@
   const ORIG = {};
   SONGS.forEach((s) => { ORIG[s.code] = { title: s.title, lines: s.lines.slice() }; });
   let edits = store.get('edits', {});
+  let notes = store.get('notes', {}); // comentarios por canción (este dispositivo)
   const temp = {}; // code -> {title, lines} | 'orig'  (mientras se recibe en directo)
 
   function prep(s) {
@@ -80,6 +81,22 @@
     s.edited = !!edits[s.code] && !t;
     prep(s);
   }
+  // Limpieza: cambios locales que ya están incorporados al cancionero publicado
+  (function cleanup() {
+    let changed = false;
+    Object.keys(edits).forEach((code) => {
+      const o = ORIG[code], e = edits[code];
+      if (!o || (e.title === o.title && e.lines.join('\n') === o.lines.join('\n'))) { delete edits[code]; changed = true; }
+    });
+    if (changed) store.set('edits', edits);
+    const before = JSON.stringify(coll);
+    coll.custom = coll.custom.filter((c) => !CATS.includes(c));
+    SONGS.forEach((s) => {
+      const own = coll.songs[s.code];
+      if (own && JSON.stringify(own.slice().sort()) === JSON.stringify((s.categories || []).slice().sort())) delete coll.songs[s.code];
+    });
+    if (JSON.stringify(coll) !== before) saveColl();
+  })();
   SONGS.forEach((s, i) => { s.index = i; load(s); applyCats(s); });
   state.list = listById(store.get('list', LISTS[0].id)).id;
   const listSongs = (id) => SONGS.filter((s) => s.list === (id || state.list));
@@ -300,6 +317,51 @@
     if (!fromSync) notify('shift');
   }
 
+  // ---------- Comentario de la canción (no se ve en el modo Pantalla) ----------
+  const noteOf = (s) => (notes[s.code] !== undefined ? notes[s.code] : (s.comment || ''));
+  function renderNote(s) {
+    const box = $('songNote');
+    if (!box) return;
+    const t = noteOf(s);
+    box.classList.remove('editing');
+    box.hidden = !t;
+    box.innerHTML = t ? `<span class="note-ico" aria-hidden="true">💬</span><div class="note-txt">${esc(t)}</div>` : '';
+    $('noteBtn').textContent = t ? '💬 Editar comentario' : '💬 Comentario';
+  }
+  function editNote() {
+    const s = state.current;
+    if (!s) return;
+    const box = $('songNote');
+    box.hidden = false;
+    box.classList.add('editing');
+    box.innerHTML = `<textarea id="noteText" rows="3" maxlength="2000" placeholder="Escribe un comentario para esta canción (p. ej. «empezar solo voz», «capo 2», «la canta María»)…"></textarea>
+      <div class="note-actions">${noteOf(s) ? '<button class="link-btn" id="noteDel">Borrar comentario</button>' : ''}<span class="ed-spacer"></span>
+      <button class="pill" id="noteCancel">Cancelar</button><button class="pill primary" id="noteSave">Guardar</button></div>`;
+    const ta = $('noteText');
+    ta.value = noteOf(s);
+    ta.focus();
+    const save = (v) => {
+      v = v.replace(/\s+$/, '');
+      if (v === (s.comment || '')) delete notes[s.code]; else notes[s.code] = v;
+      store.set('notes', notes);
+      renderNote(s);
+    };
+    $('noteSave').onclick = () => save(ta.value);
+    $('noteCancel').onclick = () => renderNote(s);
+    if ($('noteDel')) $('noteDel').onclick = () => save('');
+    ta.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); save(ta.value); }
+      else if (e.key === 'Escape') { e.preventDefault(); renderNote(s); }
+      e.stopPropagation();
+    });
+  }
+  $('noteBtn').onclick = editNote;
+  $('songNote').addEventListener('click', (e) => {
+    // los clics en Guardar/Cancelar/Borrar no deben reabrir el editor
+    if (!e.target.isConnected || e.target.closest('button, textarea') || $('songNote').classList.contains('editing')) return;
+    editNote();
+  });
+
   function showSong(code) {
     const s = SONGS.find((x) => x.code === code);
     document.body.classList.toggle('reading', !!s);
@@ -320,6 +382,7 @@
     $('song').hidden = false;
     $('songCode').textContent = s.code;
     $('songTitle').textContent = s.title;
+    renderNote(s);
     $('songTags').innerHTML = s.categories.map((c) => `<span class="tag">${esc(catLabel(c))}</span>`).join('') +
       '<button class="tag tag-btn" id="collBtn" title="Añadir o quitar esta canción de colecciones">🏷 Colecciones</button>' +
       (s.edited ? '<span class="tag edited" title="Modificada en este dispositivo">✎ Editada</span>' : '') +
@@ -432,8 +495,8 @@
       renderList();
       notify('edit');
     },
-    exportEdits: () => ({ formato: 'cancionero-meriba', version: 2, canciones: JSON.parse(JSON.stringify(edits)), colecciones: JSON.parse(JSON.stringify(coll)) }),
-    hasChanges: () => Object.keys(edits).length > 0 || coll.custom.length > 0 || Object.keys(coll.songs).length > 0,
+    exportEdits: () => ({ formato: 'cancionero-meriba', version: 3, canciones: JSON.parse(JSON.stringify(edits)), colecciones: JSON.parse(JSON.stringify(coll)), comentarios: JSON.parse(JSON.stringify(notes)) }),
+    hasChanges: () => Object.keys(edits).length > 0 || coll.custom.length > 0 || Object.keys(coll.songs).length > 0 || Object.keys(notes).length > 0,
     importEdits(obj) {
       if (!obj || typeof obj !== 'object') return 0;
       let n = 0;
@@ -443,6 +506,12 @@
           if (SONGS.some((x) => x.code === code) && Array.isArray(list)) { coll.songs[code] = list.filter((c) => allCats().includes(c)); n++; }
         });
         saveColl(); SONGS.forEach(applyCats); renderChips();
+      }
+      if (obj.formato === 'cancionero-meriba' && obj.comentarios && typeof obj.comentarios === 'object') {
+        Object.entries(obj.comentarios).forEach(([code, t]) => {
+          if (SONGS.some((x) => x.code === code) && typeof t === 'string') { notes[code] = t.slice(0, 2000); n++; }
+        });
+        store.set('notes', notes);
       }
       if (obj.formato === 'cancionero-meriba') obj = obj.canciones || {};
       Object.entries(obj).forEach(([code, v]) => {

@@ -455,3 +455,21 @@ body.editing { overflow: hidden; }
 .list-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .list-sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .list-n { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+/* ---------- Comentario de la canción ---------- */
+.song-note {
+  display: flex; gap: 10px; align-items: flex-start; margin: 14px 0 0; padding: 10px 14px;
+  border-radius: 12px; background: color-mix(in srgb, var(--accent-soft) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); cursor: text; max-width: 720px;
+}
+.song-note .note-ico { font-size: 15px; line-height: 1.5; }
+.song-note .note-txt { white-space: pre-wrap; font-size: 14.5px; line-height: 1.5; color: var(--ink); }
+.song-note.editing { display: grid; gap: 8px; cursor: default; }
+.song-note textarea {
+  width: 100%; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  padding: 8px 10px; font: inherit; font-size: 14.5px; resize: vertical; min-height: 64px;
+}
+.song-note textarea:focus { outline: none; border-color: var(--accent); }
+.note-actions { display: flex; align-items: center; gap: 8px; }
+.note-actions .link-btn { margin: 0; }
+@media print { #noteBtn { display: none !important; } }

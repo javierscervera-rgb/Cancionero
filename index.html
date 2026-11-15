@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cancionero</title>
 <meta name="description" content="Cancioneros con acordes, transposición de tono, modo pantalla y directo">
-<link rel="stylesheet" href="styles.css?v=202611152053">
+<link rel="stylesheet" href="styles.css?v=202611152108">
 </head>
 <body>
 <header class="top">
@@ -41,10 +41,12 @@
         <div class="title-row">
           <h1 id="songTitle"></h1>
           <button class="edit-btn" id="editBtn" title="Editar la canción: letra, acordes y párrafos" aria-label="Editar canción">✎ Editar</button>
+          <button class="edit-btn" id="noteBtn" title="Añadir o editar un comentario de la canción (no se ve en el modo Pantalla)">💬 Comentario</button>
         </div>
         <div class="tags" id="songTags"></div>
       </div>
 
+      <div class="song-note" id="songNote" hidden></div>
       <div class="variants" id="variants" hidden></div>
 
       <pre class="sheet" id="sheet"></pre>
@@ -84,15 +86,15 @@
   </div>
 </nav>
 
-<script src="songs.js?v=202611152053"></script>
-<script src="songs-parroquia.js?v=202611152053"></script>
-<script src="songs-adoracion.js?v=202611152053"></script>
-<script src="chords.js?v=202611152053"></script>
-<script src="app.js?v=202611152053"></script>
-<script src="live.js?v=202611152053"></script>
-<script src="screen.js?v=202611152053"></script>
-<script src="chordeditor.js?v=202611152053"></script>
-<script src="editor.js?v=202611152053"></script>
-<script src="collections.js?v=202611152053"></script>
+<script src="songs.js?v=202611152108"></script>
+<script src="songs-parroquia.js?v=202611152108"></script>
+<script src="songs-adoracion.js?v=202611152108"></script>
+<script src="chords.js?v=202611152108"></script>
+<script src="app.js?v=202611152108"></script>
+<script src="live.js?v=202611152108"></script>
+<script src="screen.js?v=202611152108"></script>
+<script src="chordeditor.js?v=202611152108"></script>
+<script src="editor.js?v=202611152108"></script>
+<script src="collections.js?v=202611152108"></script>
 </body>
 </html>

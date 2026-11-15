@@ -1,7 +1,7 @@
 // Generado a partir de «ADORACIÓN NATALIA» (PDF): transcripción revisada página a página.
 // Las canciones que coinciden con el Cancionero Meribá se toman de él, en el tono del PDF.
 window.LISTS = window.LISTS || [];
-window.LISTS.push({"id":"adoracion","name":"Adoración","cats":["Espíritu Santo","Virgen María","Navidad","Misa"]});
+window.LISTS.push({"id": "adoracion", "name": "Adoración", "cats": ["Entrada", "Adorando", "Espíritu Santo", "Virgen María", "Bendición", "Navidad"]});
 window.SONGS.push(...[
  {
   "code": "AD01",
@@ -21,7 +21,9 @@ window.SONGS.push(...[
    "Mi todo, mi fuerza mi ayuda, mi esperanza. (x4)"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Entrada"
+  ],
   "list": "adoracion"
  },
  {
@@ -89,7 +91,9 @@ window.SONGS.push(...[
    "Aunque no me lo merezco (3 veces)"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Adorando"
+  ],
   "list": "adoracion"
  },
  {
@@ -132,7 +136,9 @@ window.SONGS.push(...[
    "Sólo quiero más de ti //"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Adorando"
+  ],
   "list": "adoracion"
  },
  {
@@ -153,7 +159,9 @@ window.SONGS.push(...[
    "yo me entrego a ti, oh mi Señor"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Adorando"
+  ],
   "list": "adoracion"
  },
  {
@@ -291,7 +299,9 @@ window.SONGS.push(...[
    "Te adoro, Señor"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Adorando"
+  ],
   "list": "adoracion"
  },
  {
@@ -313,7 +323,9 @@ window.SONGS.push(...[
    "para siempre! Amén. Amén."
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Bendición"
+  ],
   "list": "adoracion"
  },
  {
@@ -394,7 +406,9 @@ window.SONGS.push(...[
    "RE RE SOL LA RE"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Entrada"
+  ],
   "list": "adoracion"
  },
  {
@@ -468,7 +482,9 @@ window.SONGS.push(...[
    "tómame en tus brazos esta noche."
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Adorando"
+  ],
   "list": "adoracion"
  },
  {
@@ -495,7 +511,9 @@ window.SONGS.push(...[
    "NO      nos podrán separar         de tu inmenso amor"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Adorando"
+  ],
   "list": "adoracion"
  },
  {
@@ -535,7 +553,9 @@ window.SONGS.push(...[
    "(BIS) y x2 ultima frase"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Bendición"
+  ],
   "list": "adoracion"
  },
  {
@@ -613,7 +633,9 @@ window.SONGS.push(...[
    "porque sólo tú tienes palabras para mí (4 veces)"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Bendición"
+  ],
   "list": "adoracion"
  },
  {
@@ -662,7 +684,9 @@ window.SONGS.push(...[
    "(1ª vez: MIm - DO - RE; 2ª vez: MIm - DO - RE → DO - RE (2) MIm)"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Adorando"
+  ],
   "list": "adoracion"
  },
  {
@@ -690,7 +714,7 @@ window.SONGS.push(...[
   ],
   "variants": [],
   "categories": [
-   "Misa"
+   "Adorando"
   ],
   "list": "adoracion"
  },
@@ -726,7 +750,9 @@ window.SONGS.push(...[
    "grande es tu fidelidad (2)"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Adorando"
+  ],
   "list": "adoracion"
  },
  {
@@ -820,7 +846,7 @@ window.SONGS.push(...[
   ],
   "variants": [],
   "categories": [
-   "Misa"
+   "Bendición"
   ],
   "list": "adoracion"
  },
@@ -858,7 +884,9 @@ window.SONGS.push(...[
    "Llamando,      llamando  - ,       llamando,       llamando  -"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Adorando"
+  ],
   "list": "adoracion"
  },
  {
@@ -889,7 +917,9 @@ window.SONGS.push(...[
    "“Tu fe te ha curado, vete en paz”"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Bendición"
+  ],
   "list": "adoracion"
  },
  {
@@ -912,7 +942,9 @@ window.SONGS.push(...[
    "No escuchéis a nadie…"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Entrada"
+  ],
   "list": "adoracion"
  },
  {
@@ -934,7 +966,9 @@ window.SONGS.push(...[
    "Sana Jesús el Señor…"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Bendición"
+  ],
   "list": "adoracion"
  },
  {
@@ -978,7 +1012,9 @@ window.SONGS.push(...[
    "Eres asombroso para mi"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Entrada"
+  ],
   "list": "adoracion"
  },
  {
@@ -1053,7 +1089,9 @@ window.SONGS.push(...[
    "reinará. (bis)"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Adorando"
+  ],
   "list": "adoracion"
  },
  {
@@ -1125,7 +1163,9 @@ window.SONGS.push(...[
    "¡Bendito sea Dios! ¡Bendito sea Dios!"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Bendición"
+  ],
   "list": "adoracion"
  },
  {
@@ -1339,7 +1379,9 @@ window.SONGS.push(...[
    "¡Él es el Rey! ¡Él es el Rey!"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Adorando"
+  ],
   "list": "adoracion"
  },
  {
@@ -1508,7 +1550,9 @@ window.SONGS.push(...[
    "QUE SEA UN DULCE SONAR PARA TI"
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Adorando"
+  ],
   "list": "adoracion"
  },
  {
@@ -1535,7 +1579,9 @@ window.SONGS.push(...[
    "Cristo murió, resucitó y de reyes es rey."
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Adorando"
+  ],
   "list": "adoracion"
  },
  {
@@ -1657,7 +1703,10 @@ window.SONGS.push(...[
    "y se rinde totalmente al contemplarte."
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Entrada",
+   "Adorando"
+  ],
   "list": "adoracion"
  },
  {
@@ -1791,7 +1840,9 @@ window.SONGS.push(...[
    "Y que en mí sólo hab--le tu amor."
   ],
   "variants": [],
-  "categories": [],
+  "categories": [
+   "Adorando"
+  ],
   "list": "adoracion"
  },
  {
@@ -1915,7 +1966,7 @@ window.SONGS.push(...[
   ],
   "variants": [],
   "categories": [
-   "Misa"
+   "Adorando"
   ],
   "list": "adoracion"
  }
