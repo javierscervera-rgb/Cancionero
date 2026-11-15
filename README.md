@@ -20,7 +20,12 @@ En la versión publicada en Claude aparece el botón **En directo**:
 - **Recibir**: tu pantalla sigue al emisor. Si navegas por tu cuenta, el seguimiento se pausa y aparece "Volver al directo".
 - Si hay varios emisores, cada receptor elige a quién seguir.
 
-Protocolo (capacidad `room`): cada participante publica `presence { role, name, follow }` y el emisor envía en el tema `sync` el estado absoluto `{ v: 1, seq, song, shift, scroll }` en cada cambio, cuando entra alguien y cada 3 s. Fuera de Claude (GitHub Pages o archivo local) el botón no aparece y la web funciona igual.
+Transporte:
+
+- **En Claude**: la capacidad `room` de la plataforma (solo emite quien tiene permiso de colaborador).
+- **En GitHub Pages**: P2P sin servidor con [Trystero](https://github.com/dmotz/trystero) (WebRTC; los navegadores se encuentran a través de relés públicos de Nostr). Todos escriben el mismo **código de sala** (o abren un enlace `?sala=codigo`). El código también cifra la negociación, así que conviene que no sea fácil de adivinar. Cualquiera que conozca el código puede emitir; cada receptor elige a quién sigue.
+
+Protocolo: cada participante publica `presence { role, name, follow }` y el emisor envía en el tema `sync` el estado absoluto `{ v: 1, seq, song, shift, scroll }` en cada cambio, cuando entra alguien y cada 3 s. Sin internet el resto de la web funciona igual.
 
 ## Uso
 
