@@ -51,19 +51,30 @@
   }
 
   // ---------- Índice ----------
+  // Al tocar una pastilla: filtra el índice; en móvil, si estás leyendo una canción, vuelve al índice
+  function pickCategory(c) {
+    state.category = c;
+    renderChips();
+    renderList();
+    if (state.current && matchMedia('(max-width: 820px)').matches) location.hash = '';
+    else $('sidebar').scrollTop = 0;
+    const on = document.querySelector('#chips .chip.on');
+    if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+  }
+
   function renderChips() {
     const wrap = $('chips');
     wrap.innerHTML = '';
     const all = document.createElement('button');
     all.className = 'chip' + (state.category ? '' : ' on');
     all.textContent = 'Todas';
-    all.onclick = () => { state.category = null; renderChips(); renderList(); };
+    all.onclick = () => pickCategory(null);
     wrap.appendChild(all);
     CATS.forEach((c) => {
       const b = document.createElement('button');
       b.className = 'chip' + (state.category === c ? ' on' : '');
       b.textContent = c.charAt(0) + c.slice(1).toLowerCase();
-      b.onclick = () => { state.category = state.category === c ? null : c; renderChips(); renderList(); };
+      b.onclick = () => pickCategory(state.category === c ? null : c);
       wrap.appendChild(b);
     });
   }
