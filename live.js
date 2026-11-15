@@ -8,9 +8,8 @@
 //     - scroll: fracción 0..1 de la partitura que está en lo alto de la pantalla (o null)
 // Transporte:
 //   - Dentro de Claude: capacidad `room` de la plataforma.
-//   - Fuera de Claude (GitHub Pages): P2P sin servidor con Trystero (WebRTC; los navegadores
-//     se encuentran a través de relés públicos de Nostr). Hay que elegir un código de sala;
-//     ese código se usa también como contraseña que cifra la negociación.
+//   - Fuera de Claude (GitHub Pages): broker MQTT público por WebSocket seguro, sin servidor
+//     propio. Hay que elegir un código de sala; todos los que usen el mismo código se ven.
 (function () {
   'use strict';
   if (!window.App) return;
@@ -164,6 +163,7 @@
       send();
       live.heartbeat = setInterval(send, 3000);
     } else {
+      if (live.room && live.room.emit && !IN_CLAUDE) live.room.emit('sync', null);
       live.following = pickEmitter();
       live.room.presence({ role: 'receptor', name: cleanName(live.name), follow: live.following ? { of: live.following } : null }).catch(() => {});
     }
@@ -333,56 +333,105 @@
     }, () => {});
   }
 
-  // ---- P2P (GitHub Pages): imita la API de `room` sobre Trystero ----
-  const TRYSTERO = 'https://cdn.jsdelivr.net/npm/trystero@0.25.4/+esm';
+  // ---- Fuera de Claude (GitHub Pages): imita la API de `room` sobre MQTT por WebSocket ----
+  // Se usa un broker MQTT público (sin servidor propio). Todo va por wss://, así que
+  // funciona en cualquier red donde se pueda navegar (no necesita conexión directa entre dispositivos).
+  //   <base>/pres/<id>  presencia (retenida; el broker la borra si el dispositivo se desconecta)
+  //   <base>/sync/<id>  último estado del emisor (retenido: quien entra tarde lo recibe al instante)
+  const MQTT_LIB = 'https://cdn.jsdelivr.net/npm/mqtt@5.15.2/dist/mqtt.min.js';
+  const BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'];
   const cleanRoom = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
   live.sala = cleanRoom(new URLSearchParams(location.search).get('sala') || store.get('liveSala', ''));
 
-  function makeP2PRoom(code) {
+  let mqttLoading = null;
+  function loadMqtt() {
+    if (window.mqtt) return Promise.resolve(window.mqtt);
+    if (!mqttLoading) mqttLoading = new Promise((ok, ko) => {
+      const s = document.createElement('script');
+      s.src = MQTT_LIB; s.async = true;
+      s.onload = () => (window.mqtt ? ok(window.mqtt) : ko(new Error('mqtt')));
+      s.onerror = () => { mqttLoading = null; ko(new Error('mqtt')); };
+      document.head.appendChild(s);
+    });
+    return mqttLoading;
+  }
+
+  function makeNetRoom(code) {
+    const myId = 'p' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+    const base = 'cancionero-meriba/v1/' + code;
+    const presTopic = base + '/pres/' + myId, syncTopic = base + '/sync/' + myId;
     const subs = {}, peerSubs = [], connSubs = [];
-    const presences = new Map();      // peerId -> presence
-    let myPresence = {}, selfId = 'yo', trRoom = null, actions = null, connected = false, closed = false;
+    const presences = new Map();
+    let myPresence = {}, client = null, connected = false, closed = false, brokerIdx = 0, hb = null;
     const freeze = (o) => Object.freeze(o);
-    const snapshot = () => [freeze({ peer: selfId, isMe: true, sameTab: true, kind: 'viewer', guest: false, by: null, presence: myPresence, updatedAt: Date.now() })]
+    const snapshot = () => [freeze({ peer: myId, isMe: true, sameTab: true, kind: 'viewer', guest: false, by: null, presence: myPresence, updatedAt: Date.now() })]
       .concat([...presences].map(([id, pr]) => freeze({ peer: id, isMe: false, sameTab: false, kind: 'viewer', guest: false, by: null, presence: pr, updatedAt: Date.now() })));
     const firePeers = (joined = [], left = []) => {
       const peers = snapshot();
-      peerSubs.forEach((f) => f({ peers, joined: peers.filter((p) => joined.includes(p.peer)), left: left.map((id) => freeze({ peer: id, presence: {} })), updated: [] }));
+      peerSubs.forEach((f) => { try { f({ peers, joined: peers.filter((p) => joined.includes(p.peer)), left: left.map((id) => freeze({ peer: id, presence: {} })), updated: [] }); } catch (e) { /* nada */ } });
     };
-    const setConn = (c) => { connected = c; connSubs.forEach((f) => f(c)); };
+    const setConn = (c) => { if (c !== connected) { connected = c; connSubs.forEach((f) => f(c)); } };
+    const publishPresence = () => {
+      if (client && connected) client.publish(presTopic, JSON.stringify(Object.assign({}, myPresence, { t: Date.now() })), { retain: true, qos: 1 });
+    };
 
-    import(TRYSTERO).then((T) => {
+    function connect() {
       if (closed) return;
-      selfId = T.selfId;
-      trRoom = T.joinRoom({ appId: 'cancionero-meriba-v1', password: 'meriba:' + code }, code);
-      const sync = trRoom.makeAction('sync'), pres = trRoom.makeAction('pres');
-      actions = { sync, pres };
-      sync.onMessage = (data, info) => {
-        const peer = info && info.peerId;
-        if (!peer) return;
-        (subs.sync || []).forEach((f) => f({ topic: 'sync', data, peer, isMe: false, sameTab: false, kind: 'viewer', guest: false, by: null }));
-      };
-      pres.onMessage = (data, info) => {
-        const peer = info && info.peerId;
-        if (!peer || !data || typeof data !== 'object') return;
-        const isNew = !presences.has(peer);
-        presences.set(peer, freeze(Object.assign({}, data)));
-        firePeers(isNew ? [peer] : []);
-      };
-      trRoom.onPeerJoin = (peer) => {
-        if (!presences.has(peer)) presences.set(peer, freeze({}));
-        try { pres.send(myPresence, { target: peer }); } catch (e) { /* nada */ }
-        firePeers([peer]);
-      };
-      trRoom.onPeerLeave = (peer) => { presences.delete(peer); firePeers([], [peer]); };
-      setConn(true);
-      firePeers([selfId]);
+      const url = BROKERS[brokerIdx % BROKERS.length];
+      let opened = false;
+      client = window.mqtt.connect(url, {
+        clientId: myId, clean: true, keepalive: 20, reconnectPeriod: 3000, connectTimeout: 8000,
+        will: { topic: presTopic, payload: '', retain: true, qos: 1 }
+      });
+      const failTimer = setTimeout(() => {
+        if (!opened && !closed) { try { client.end(true); } catch (e) { /* nada */ } brokerIdx++; connect(); }
+      }, 9000);
+      client.on('connect', () => {
+        opened = true; clearTimeout(failTimer);
+        client.subscribe([base + '/pres/+', base + '/sync/+'], { qos: 1 });
+        setConn(true);
+        publishPresence();
+        firePeers([myId]);
+      });
+      client.on('close', () => setConn(false));
+      client.on('offline', () => setConn(false));
+      client.on('message', (topic, payload) => {
+        const parts = topic.split('/'); const kind = parts[3], peer = parts[4];
+        if (!peer || peer === myId) return;
+        const text = payload ? payload.toString() : '';
+        let data = null;
+        if (text) { try { data = JSON.parse(text); } catch (e) { return; } }
+        if (kind === 'pres') {
+          if (!data || typeof data !== 'object' || (data.t && Date.now() - data.t > 90000)) {
+            if (presences.delete(peer)) firePeers([], [peer]);
+            return;
+          }
+          const isNew = !presences.has(peer);
+          presences.set(peer, freeze(data));
+          firePeers(isNew ? [peer] : []);
+        } else if (kind === 'sync' && data) {
+          if (!presences.has(peer)) return; // solo de quien está presente
+          (subs.sync || []).forEach((f) => f({ topic: 'sync', data, peer, isMe: false, sameTab: false, kind: 'viewer', guest: false, by: null }));
+        }
+      });
+    }
+
+    loadMqtt().then(() => {
+      connect();
+      // latido: mantiene la presencia fresca y limpia a quien desaparece sin avisar
+      hb = setInterval(() => {
+        publishPresence();
+        let gone = [];
+        presences.forEach((pr, id) => { if (pr.t && Date.now() - pr.t > 90000) gone.push(id); });
+        gone.forEach((id) => presences.delete(id));
+        if (gone.length) firePeers([], gone);
+      }, 30000);
     }).catch(() => { setConn(false); flash('No se pudo cargar el modo en directo (¿sin conexión a internet?).'); });
 
     return {
       emit(topic, data) {
-        if (topic === 'sync' && actions) { try { actions.sync.send(data); } catch (e) { /* nada */ } }
+        if (topic === 'sync' && client && connected) client.publish(syncTopic, JSON.stringify(data), { retain: true, qos: 0 });
         return Promise.resolve();
       },
       on(topic, fn) { (subs[topic] = subs[topic] || []).push(fn); return () => {}; },
@@ -390,7 +439,7 @@
         const next = Object.assign({}, myPresence);
         for (const k in patch) { if (patch[k] === null) delete next[k]; else next[k] = patch[k]; }
         myPresence = freeze(next);
-        if (actions) { try { actions.pres.send(myPresence); } catch (e) { /* nada */ } }
+        publishPresence();
         firePeers();
         return Promise.resolve();
       },
@@ -398,17 +447,28 @@
       onPeers(fn) { peerSubs.push(fn); return () => {}; },
       onConnection(fn) { connSubs.push(fn); setTimeout(() => fn(connected), 0); return () => {}; },
       connected: () => connected,
-      leave() { closed = true; if (trRoom) { try { trRoom.leave(); } catch (e) { /* nada */ } } presences.clear(); }
+      leave() {
+        closed = true; clearInterval(hb);
+        if (client) {
+          try {
+            if (connected) { client.publish(presTopic, '', { retain: true, qos: 1 }); client.publish(syncTopic, '', { retain: true, qos: 0 }); }
+            client.end(false);
+          } catch (e) { /* nada */ }
+        }
+        presences.clear();
+      }
     };
   }
   function connectP2P() {
     live.connected = false;
-    attach(makeP2PRoom(cleanRoom(live.sala)));
+    attach(makeNetRoom(cleanRoom(live.sala)));
   }
   function disconnectP2P() {
     if (live.room && live.room.leave) live.room.leave();
     live.room = null; live.connected = false; live.following = null; live.last = null; live.myPeer = null;
   }
+
+  window.addEventListener('pagehide', () => { if (!IN_CLAUDE && live.room && live.room.leave) live.room.leave(); });
 
   if (IN_CLAUDE) {
     window.claude.use('room').then((room) => {

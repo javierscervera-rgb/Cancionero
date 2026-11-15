@@ -23,7 +23,7 @@ En la versión publicada en Claude aparece el botón **En directo**:
 Transporte:
 
 - **En Claude**: la capacidad `room` de la plataforma (solo emite quien tiene permiso de colaborador).
-- **En GitHub Pages**: P2P sin servidor con [Trystero](https://github.com/dmotz/trystero) (WebRTC; los navegadores se encuentran a través de relés públicos de Nostr). Todos escriben el mismo **código de sala** (o abren un enlace `?sala=codigo`). El código también cifra la negociación, así que conviene que no sea fácil de adivinar. Cualquiera que conozca el código puede emitir; cada receptor elige a quién sigue.
+- **En GitHub Pages**: sin servidor propio, a través de un broker MQTT público por WebSocket seguro (`broker.emqx.io`, con `broker.hivemq.com` de reserva). Funciona en cualquier red donde se pueda navegar. Todos escriben el mismo **código de sala** (o abren un enlace `?sala=codigo`). El estado del emisor queda retenido en el broker, así que quien entra tarde lo recibe al instante. Los mensajes del broker público no van cifrados de extremo a extremo (solo contienen el código de canción, el tono y la posición). Cualquiera que conozca el código puede emitir; cada receptor elige a quién sigue.
 
 Protocolo: cada participante publica `presence { role, name, follow }` y el emisor envía en el tema `sync` el estado absoluto `{ v: 1, seq, song, shift, scroll }` en cada cambio, cuando entra alguien y cada 3 s. Sin internet el resto de la web funciona igual.
 
