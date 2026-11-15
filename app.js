@@ -16,6 +16,7 @@
     mono: store.get('mono', false),
     shifts: store.get('shifts', {}),
     category: null,
+    list: null,
     para: null,
     paraCount: 0,
     query: '',
@@ -23,12 +24,19 @@
   };
 
   // ---------- Pre-proceso ----------
-  const CATS = ['ESPÍRITU SANTO', 'ALABANZA', 'ADORACIÓN', 'BLESSING', 'SANACIÓN', 'VIRGEN MARÍA'];
+  // Listas de reproducción (cada cancionero es una lista con sus propias colecciones)
+  const LISTS = (window.LISTS && window.LISTS.length) ? window.LISTS
+    : [{ id: 'meriba', name: 'Cancionero Meribá', cats: ['ESPÍRITU SANTO', 'ALABANZA', 'ADORACIÓN', 'BLESSING', 'SANACIÓN', 'VIRGEN MARÍA'] }];
+  SONGS.forEach((s) => { if (!s.list) s.list = LISTS[0].id; });
+  const listById = (id) => LISTS.find((l) => l.id === id) || LISTS[0];
+  const CATS = LISTS.flatMap((l) => l.cats || []); // colecciones de todos los cancioneros
+  const UPPER_CATS = listById('meriba').cats || [];
   // Colecciones: las del cancionero + las creadas en este dispositivo; pertenencia editable por canción
   let coll = store.get('collections', { custom: [], songs: {} });
   if (!coll || !Array.isArray(coll.custom) || typeof coll.songs !== 'object') coll = { custom: [], songs: {} };
-  const allCats = () => CATS.concat(coll.custom);
-  const catLabel = (c) => CATS.includes(c) ? c.charAt(0) + c.slice(1).toLowerCase() : c;
+  const allCats = () => CATS.concat(coll.custom.filter((c) => !CATS.includes(c)));
+  const catsFor = (listId) => (listById(listId).cats || []).concat(coll.custom.filter((c) => !CATS.includes(c)));
+  const catLabel = (c) => UPPER_CATS.includes(c) ? c.charAt(0) + c.slice(1).toLowerCase() : c;
   function applyCats(s) {
     if (!s.baseCats) s.baseCats = (s.categories || []).slice();
     const own = coll.songs[s.code];
@@ -73,6 +81,8 @@
     prep(s);
   }
   SONGS.forEach((s, i) => { s.index = i; load(s); applyCats(s); });
+  state.list = listById(store.get('list', LISTS[0].id)).id;
+  const listSongs = (id) => SONGS.filter((s) => s.list === (id || state.list));
 
   // ---------- Utilidades ----------
   const esc = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -97,6 +107,28 @@
     if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
   }
 
+  // ---------- Listas de reproducción (lateral izquierdo) ----------
+  function setList(id, keepSong) {
+    id = listById(id).id;
+    const changed = id !== state.list;
+    state.list = id;
+    store.set('list', id);
+    if (changed) state.category = null;
+    renderLists(); renderChips(); renderList();
+    if (changed && !keepSong && state.current && state.current.list !== id) location.hash = '';
+  }
+  function renderLists() {
+    const box = $('lists');
+    if (!box) return;
+    box.innerHTML = LISTS.map((l) => `<button class="list-item${l.id === state.list ? ' on' : ''}" data-list="${l.id}" aria-pressed="${l.id === state.list}">
+        <span class="list-ico">♫</span><span class="list-txt"><span class="list-name">${esc(l.name)}</span>${l.sub ? `<span class="list-sub">${esc(l.sub)}</span>` : ''}</span>
+        <span class="list-n">${listSongs(l.id).length}</span></button>`).join('');
+    box.querySelectorAll('[data-list]').forEach((b) => { b.onclick = () => setList(b.dataset.list); });
+    const cur = listById(state.list);
+    const w = $('welcome');
+    if (w) { w.querySelector('h1').textContent = cur.name; $('count').textContent = listSongs(cur.id).length + ' canciones'; }
+  }
+
   function renderChips() {
     const wrap = $('chips');
     wrap.innerHTML = '';
@@ -105,7 +137,7 @@
     all.textContent = 'Todas';
     all.onclick = () => pickCategory(null);
     wrap.appendChild(all);
-    allCats().forEach((c) => {
+    catsFor(state.list).forEach((c) => {
       const b = document.createElement('button');
       b.className = 'chip' + (state.category === c ? ' on' : '') + (CATS.includes(c) ? '' : ' custom');
       b.textContent = catLabel(c);
@@ -123,6 +155,7 @@
   function filtered() {
     const q = fold(state.query.trim());
     return SONGS.filter((s) =>
+      s.list === state.list &&
       (!state.category || s.categories.includes(state.category)) &&
       (!q || s.searchText.includes(q) || s.code.toLowerCase().includes(q)));
   }
@@ -276,7 +309,7 @@
       state.current = null;
       $('song').hidden = true;
       $('welcome').hidden = false;
-      document.title = 'Cancionero Meribá';
+      document.title = 'Cancionero';
       renderList();
       notifyView();
       return;
@@ -291,8 +324,10 @@
       '<button class="tag tag-btn" id="collBtn" title="Añadir o quitar esta canción de colecciones">🏷 Colecciones</button>' +
       (s.edited ? '<span class="tag edited" title="Modificada en este dispositivo">✎ Editada</span>' : '') +
       (temp[s.code] ? '<span class="tag edited" title="Versión del emisor">↻ Versión del emisor</span>' : '');
-    document.title = s.title + ' · Cancionero Meribá';
-    const prev = SONGS[s.index - 1], next = SONGS[s.index + 1];
+    document.title = s.title + ' · Cancionero';
+    if (s.list !== state.list) setList(s.list, true);
+    const ls = listSongs(s.list), li = ls.indexOf(s);
+    const prev = ls[li - 1], next = ls[li + 1];
     $('prevLink').style.visibility = prev ? 'visible' : 'hidden';
     $('nextLink').style.visibility = next ? 'visible' : 'hidden';
     if (prev) { $('prevLink').href = '#' + prev.code; $('prevLink').textContent = '← ' + prev.title; }
@@ -422,7 +457,7 @@
       return n;
     },
     // ---- Colecciones ----
-    collections: () => allCats().map((c) => ({ name: c, label: catLabel(c), custom: !CATS.includes(c), count: SONGS.filter((s) => s.categories.includes(c)).length })),
+    collections: () => catsFor(state.current ? state.current.list : state.list).map((c) => ({ name: c, label: catLabel(c), custom: !CATS.includes(c), count: SONGS.filter((s) => s.categories.includes(c)).length })),
     songCats: () => (state.current ? state.current.categories.slice() : []),
     setSongCats(code, list) {
       const s = SONGS.find((x) => x.code === code);
@@ -479,7 +514,8 @@
     },
     song(d) {
       if (!state.current) return;
-      const t = SONGS[state.current.index + d];
+      const ls = listSongs(state.current.list);
+      const t = ls[ls.indexOf(state.current) + d];
       if (t) location.hash = '#' + t.code;
     },
     onView(fn) { viewListeners.push(fn); }
@@ -546,7 +582,7 @@
     else if (e.key === 'ArrowLeft' && SONGS[state.current.index - 1]) location.hash = '#' + SONGS[state.current.index - 1].code;
   });
 
-  $('count').textContent = SONGS.length + ' canciones';
+  renderLists();
   updateNotationBtn();
   renderChips();
   window.addEventListener('hashchange', route);

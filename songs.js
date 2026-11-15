@@ -1,4 +1,5 @@
 // Generado a partir de CANCIONERO MERIBÁ.pages
+window.LISTS = [{ "id": "meriba", "name": "Cancionero Meribá", "cats": ["ESPÍRITU SANTO", "ALABANZA", "ADORACIÓN", "BLESSING", "SANACIÓN", "VIRGEN MARÍA"] }];
 window.SONGS = [
  {
   "code": "A01",

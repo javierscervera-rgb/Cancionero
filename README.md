@@ -1,6 +1,13 @@
-# Cancionero Meribá
+# Cancionero
 
-Web con las canciones del cancionero Meribá, sus acordes y un **controlador de tono** que transpone todos los acordes al instante.
+Web con cancioneros (listas de reproducción), sus acordes y un **controlador de tono** que transpone todos los acordes al instante.
+
+## Listas de reproducción
+
+En el lateral izquierdo se elige el cancionero; cada uno tiene sus propias colecciones:
+
+- **Cancionero Meribá** (94 canciones, de `CANCIONERO MERIBÁ.pages`) — `songs.js`.
+- **Cancionero Parroquia** — San Sebastián Mártir (119 canciones, del PDF) — `songs-parroquia.js`. Colecciones según su índice. De los acordes dobles se conserva solo el primero; la minúscula indica acorde menor (lam → LAm). *Quebrántame (Jesed)*, que en el PDF es una imagen, está transcrita a mano.
 
 ## Funciones
 
@@ -64,6 +71,7 @@ Abre `index.html` en el navegador (funciona sin servidor) o publícalo con GitHu
 
 - `index.html`, `styles.css`, `app.js` — la web.
 - `chords.js` — detección y transposición de acordes.
-- `songs.js` — las canciones, extraídas del archivo `CANCIONERO MERIBÁ.pages`.
+- `songs.js` — Cancionero Meribá (extraído de `CANCIONERO MERIBÁ.pages`).
+- `songs-parroquia.js` — Cancionero Parroquia (extraído del PDF).
 
 Para corregir una canción, edita su texto en `songs.js` (cada canción es una lista de líneas; las líneas de acordes se detectan automáticamente).
