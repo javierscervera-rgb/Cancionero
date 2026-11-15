@@ -7,6 +7,7 @@ Web con cancioneros (listas de reproducción), sus acordes y un **controlador de
 En el lateral izquierdo se elige el cancionero; cada uno tiene sus propias colecciones:
 
 - **Cancionero Meribá** (94 canciones, de `CANCIONERO MERIBÁ.pages`) — `songs.js`.
+- **Adoración** (47 canciones, del PDF «ADORACIÓN NATALIA») — `songs-adoracion.js`. El PDF mezcla capturas, escaneos y anotaciones a mano, así que se transcribió página a página (OCR + revisión). Las canciones que coinciden con el Cancionero Meribá se toman de él, en el tono del PDF. Colecciones: Espíritu Santo, Virgen María, Navidad y Misa.
 - **Cancionero Parroquia** — San Sebastián Mártir (119 canciones, del PDF) — `songs-parroquia.js`. Colecciones según su índice. De los acordes dobles se conserva solo el primero; la minúscula indica acorde menor (lam → LAm). *Quebrántame (Jesed)*, que en el PDF es una imagen, está transcrita a mano.
 
 ## Funciones
@@ -73,5 +74,6 @@ Abre `index.html` en el navegador (funciona sin servidor) o publícalo con GitHu
 - `chords.js` — detección y transposición de acordes.
 - `songs.js` — Cancionero Meribá (extraído de `CANCIONERO MERIBÁ.pages`).
 - `songs-parroquia.js` — Cancionero Parroquia (extraído del PDF).
+- `songs-adoracion.js` — Adoración (transcrito del PDF).
 
 Para corregir una canción, edita su texto en `songs.js` (cada canción es una lista de líneas; las líneas de acordes se detectan automáticamente).
