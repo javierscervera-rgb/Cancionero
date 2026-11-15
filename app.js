@@ -25,8 +25,13 @@
   // ---------- Pre-proceso ----------
   const CATS = ['ESPÍRITU SANTO', 'ALABANZA', 'ADORACIÓN', 'BLESSING', 'SANACIÓN', 'VIRGEN MARÍA'];
   const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-  SONGS.forEach((s, i) => {
-    s.index = i;
+  // Contenido original, ediciones guardadas en este dispositivo y versiones temporales del emisor
+  const ORIG = {};
+  SONGS.forEach((s) => { ORIG[s.code] = { title: s.title, lines: s.lines.slice() }; });
+  let edits = store.get('edits', {});
+  const temp = {}; // code -> {title, lines} | 'orig'  (mientras se recibe en directo)
+
+  function prep(s) {
     s.key = C.detectKey(s.lines);
     s.chordFlags = s.lines.map(C.isChordLine);
     s.searchText = fold(s.title + ' ' + s.lines.filter((_, j) => !s.chordFlags[j]).join(' '));
@@ -46,7 +51,16 @@
         if (d !== 0 && !s.altShifts.includes(d)) s.altShifts.push(d);
       }
     });
-  });
+  }
+  function load(s) {
+    const t = temp[s.code];
+    const src = t === 'orig' ? ORIG[s.code] : (t || edits[s.code] || ORIG[s.code]);
+    s.title = src.title;
+    s.lines = src.lines.slice();
+    s.edited = !!edits[s.code] && !t;
+    prep(s);
+  }
+  SONGS.forEach((s, i) => { s.index = i; load(s); });
 
   // ---------- Utilidades ----------
   const esc = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -255,7 +269,9 @@
     $('song').hidden = false;
     $('songCode').textContent = s.code;
     $('songTitle').textContent = s.title;
-    $('songTags').innerHTML = s.categories.map((c) => `<span class="tag">${c.charAt(0) + c.slice(1).toLowerCase()}</span>`).join('');
+    $('songTags').innerHTML = s.categories.map((c) => `<span class="tag">${c.charAt(0) + c.slice(1).toLowerCase()}</span>`).join('') +
+      (s.edited ? '<span class="tag edited" title="Modificada en este dispositivo">✎ Editada</span>' : '') +
+      (temp[s.code] ? '<span class="tag edited" title="Versión del emisor">↻ Versión del emisor</span>' : '');
     document.title = s.title + ' · Cancionero Meribá';
     const prev = SONGS[s.index - 1], next = SONGS[s.index + 1];
     $('prevLink').style.visibility = prev ? 'visible' : 'hidden';
@@ -316,6 +332,91 @@
       if (!state.current || !state.paraCount) return;
       const n = state.para === null ? 0 : state.para + d;
       if (n >= 0 && n < state.paraCount) selectPara(n);
+    },
+    // ---- Edición de canciones ----
+    editData() {
+      const s = state.current;
+      if (!s) return null;
+      const shift = state.shifts[s.code] || 0;
+      const flats = s.key ? C.prefersFlats(s.key.semi + shift, s.key.minor) : false;
+      const text = s.lines.map((line, i) => s.chordFlags[i] && (shift || state.notation !== 'latin')
+        ? C.transposeLine(line, shift, flats, state.notation).map((g) => g.text).join('') : line).join('\n');
+      return { code: s.code, title: s.title, text, shift, keyName: keyName(s, shift), edited: !!edits[s.code], temp: !!temp[s.code] };
+    },
+    saveEdit(code, title, text) {
+      const s = SONGS.find((x) => x.code === code);
+      if (!s) return false;
+      const shift = state.shifts[code] || 0;
+      let lines = text.replace(/\r/g, '').replace(/\t/g, '    ').split('\n').map((l) => l.replace(/\s+$/, ''));
+      while (lines.length && !lines[0].trim()) lines.shift();
+      while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+      // colapsa varias líneas en blanco seguidas en una sola (un salto de párrafo)
+      lines = lines.filter((l, i) => l.trim() || (i > 0 && lines[i - 1].trim()));
+      if (shift) {
+        const k = C.detectKey(lines);
+        const flats = k ? C.prefersFlats(k.semi - shift, k.minor) : false;
+        lines = lines.map((l) => C.isChordLine(l) ? C.transposeLine(l, -shift, flats, state.notation).map((g) => g.text).join('').replace(/\s+$/, '') : l);
+      }
+      title = (title || '').trim() || ORIG[code].title;
+      const o = ORIG[code];
+      if (title === o.title && lines.join('\n') === o.lines.join('\n')) delete edits[code];
+      else edits[code] = { title, lines };
+      store.set('edits', edits);
+      load(s);
+      if (state.current === s) showSong(code);
+      renderList();
+      notify('edit');
+      return true;
+    },
+    resetEdit(code) {
+      const s = SONGS.find((x) => x.code === code);
+      if (!s) return;
+      delete edits[code];
+      store.set('edits', edits);
+      load(s);
+      if (state.current === s) showSong(code);
+      renderList();
+      notify('edit');
+    },
+    exportEdits: () => JSON.parse(JSON.stringify(edits)),
+    importEdits(obj) {
+      if (!obj || typeof obj !== 'object') return 0;
+      let n = 0;
+      Object.entries(obj).forEach(([code, v]) => {
+        const s = SONGS.find((x) => x.code === code);
+        if (!s || !v || typeof v.title !== 'string' || !Array.isArray(v.lines)) return;
+        edits[code] = { title: v.title.slice(0, 200), lines: v.lines.filter((l) => typeof l === 'string').map((l) => l.slice(0, 400)).slice(0, 400) };
+        load(s); n++;
+      });
+      store.set('edits', edits);
+      if (state.current) showSong(state.current.code);
+      renderList();
+      return n;
+    },
+    // ---- Versión temporal del emisor (directo) ----
+    songContent(code) {
+      const s = SONGS.find((x) => x.code === code);
+      return s && s.edited ? { t: s.title, l: s.lines } : null;
+    },
+    setTemp(code, content) {
+      const s = SONGS.find((x) => x.code === code);
+      if (!s) return;
+      let next;
+      if (content && typeof content.t === 'string' && Array.isArray(content.l)) {
+        next = { title: content.t.slice(0, 200), lines: content.l.filter((x) => typeof x === 'string').map((x) => x.slice(0, 400)).slice(0, 400) };
+      } else next = edits[code] ? 'orig' : undefined; // el emisor usa la versión original
+      const same = JSON.stringify(temp[code]) === JSON.stringify(next);
+      if (same) return;
+      if (next === undefined) delete temp[code]; else temp[code] = next;
+      load(s);
+      if (state.current === s) showSong(code);
+    },
+    clearTemp() {
+      Object.keys(temp).forEach((code) => {
+        delete temp[code];
+        const s = SONGS.find((x) => x.code === code);
+        if (s) { load(s); if (state.current === s) showSong(code); }
+      });
     },
     song(d) {
       if (!state.current) return;

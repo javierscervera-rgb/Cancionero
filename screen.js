@@ -166,7 +166,10 @@
     if (!c) wake();
     setTimeout(fit, 60);
   }
+  // Recibiendo en pantalla completa: no se puede navegar por cuenta propia
+  const locked = () => clean && window.Live && window.Live.receiving();
   function enterFs() {
+    if (window.Live && window.Live.receiving()) window.Live.resume();
     const d = document.documentElement;
     const req = d.requestFullscreen || d.webkitRequestFullscreen;
     setClean(true);
@@ -223,13 +226,14 @@
   ['pointerup', 'pointercancel', 'pointerleave'].forEach((t) =>
     el.addEventListener(t, () => clearTimeout(pressTimer)));
   el.addEventListener('click', (e) => {
-    if (!on || longPressed || e.target.closest('#scrUi')) return;
+    if (!on || longPressed || e.target.closest('#scrUi') || locked()) return;
     if (e.clientX < window.innerWidth / 3) A.step(-1); else A.step(1);
   });
 
   document.addEventListener('keydown', (e) => {
     if (!on || e.target.matches('input, textarea')) return;
     const k = e.key;
+    if (locked() && !['f', 'F', 'Escape'].includes(k)) { e.preventDefault(); return; }
     if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(k)) { e.preventDefault(); A.step(1); }
     else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(k)) { e.preventDefault(); A.step(-1); }
     else if (k === 'f' || k === 'F') { if (isFs() || clean) { exitFs(); setClean(false); } else enterFs(); }

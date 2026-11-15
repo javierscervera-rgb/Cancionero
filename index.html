@@ -36,7 +36,10 @@
     <article class="song" id="song" hidden>
       <div class="song-head">
         <span class="code" id="songCode"></span>
-        <h1 id="songTitle"></h1>
+        <div class="title-row">
+          <h1 id="songTitle"></h1>
+          <button class="edit-btn" id="editBtn" title="Editar la canción: letra, acordes y párrafos" aria-label="Editar canción">✎ Editar</button>
+        </div>
         <div class="tags" id="songTags"></div>
       </div>
 
@@ -84,5 +87,6 @@
 <script src="app.js"></script>
 <script src="live.js"></script>
 <script src="screen.js"></script>
+<script src="editor.js"></script>
 </body>
 </html>

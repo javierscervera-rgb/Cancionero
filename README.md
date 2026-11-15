@@ -13,6 +13,14 @@ Web con las canciones del cancionero Meribá, sus acordes y un **controlador de 
 - Atajos de teclado: `+` / `-` cambian el tono, `↑` / `↓` cambian de párrafo, `←` / `→` pasan de canción.
 - El tono elegido para cada canción se recuerda en el navegador.
 
+## Editar canciones
+
+Botón **✎ Editar** junto al título: cambia el título, la letra y los acordes, y separa o une párrafos (una línea en blanco = salto de párrafo), con vista previa.
+
+- Los acordes se editan en el tono en que estás viendo la canción; al guardar se pasan al tono original.
+- Los cambios se guardan **en este dispositivo** (se marcan como "✎ Editada"). Se pueden **exportar** a un archivo `.json` e **importar** en otro dispositivo. Para que sean para todos, hay que incorporarlos a `songs.js` en el repositorio.
+- En el directo, si el emisor ha editado la canción, los receptores ven temporalmente su versión ("↻ Versión del emisor") para que los párrafos coincidan.
+
 ## Modo Pantalla (proyección)
 
 Botón **Pantalla** en la barra de la derecha: fondo negro y solo la letra (sin acordes), blanca y centrada.
@@ -20,7 +28,7 @@ Botón **Pantalla** en la barra de la derecha: fondo negro y solo la letra (sin 
 - Muestra el párrafo seleccionado (o el título si no hay ninguno). Con el modo en directo sigue el párrafo del emisor.
 - Ajustes (⚙): tamaño de letra, fuente (Helvetica, Montserrat, Lato, Nunito, Oswald, Georgia, Merriweather, Playfair), negrita y márgenes arriba/abajo/izquierda/derecha. Se recuerdan en el navegador.
 - Si la letra no cabe en el espacio de proyección, se reduce automáticamente.
-- **Pantalla completa** (⛶ o tecla `F`): oculta todo, solo letra blanca sobre negro. Para salir: `Esc`, `F` o mantener pulsado.
+- **Pantalla completa** (⛶ o tecla `F`): oculta todo, solo letra blanca sobre negro. Para salir: `Esc`, `F` o mantener pulsado. Si estás **recibiendo**, en pantalla completa solo se ve lo que marca el emisor (no se puede navegar por cuenta propia).
 - Navegación: tocar el tercio izquierdo = párrafo anterior, resto = siguiente; teclas `←` `→` `↑` `↓` `Espacio` `RePág` `AvPág` (sirve con un mando de presentaciones); `N` / `P` canción siguiente / anterior.
 
 ## Modo en directo
