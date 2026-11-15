@@ -79,7 +79,7 @@
     const list = $('songList');
     const items = filtered();
     list.innerHTML = items.map((s) =>
-      `<li><a href="#/${s.code}" class="${state.current === s ? 'active' : ''}">` +
+      `<li><a href="#${s.code}" class="${state.current === s ? 'active' : ''}">` +
       `<span class="code">${s.code}</span><span class="t">${esc(s.title)}</span>` +
       `<span class="k">${keyName(s, state.shifts[s.code] || 0)}</span></a></li>`).join('') ||
       '<li class="empty">No hay canciones que coincidan.</li>';
@@ -168,8 +168,8 @@
     const prev = SONGS[s.index - 1], next = SONGS[s.index + 1];
     $('prevLink').style.visibility = prev ? 'visible' : 'hidden';
     $('nextLink').style.visibility = next ? 'visible' : 'hidden';
-    if (prev) { $('prevLink').href = '#/' + prev.code; $('prevLink').textContent = '← ' + prev.title; }
-    if (next) { $('nextLink').href = '#/' + next.code; $('nextLink').textContent = next.title + ' →'; }
+    if (prev) { $('prevLink').href = '#' + prev.code; $('prevLink').textContent = '← ' + prev.title; }
+    if (next) { $('nextLink').href = '#' + next.code; $('nextLink').textContent = next.title + ' →'; }
     renderSheet();
     renderList();
     window.scrollTo(0, 0);
@@ -191,7 +191,7 @@
   $('monoFont').checked = state.mono;
   $('monoFont').onchange = (e) => { state.mono = e.target.checked; store.set('mono', state.mono); renderSheet(); };
   $('search').oninput = (e) => { state.query = e.target.value; renderList(); };
-  $('backBtn').onclick = () => { location.hash = '#/'; };
+  $('backBtn').onclick = () => { location.hash = ''; };
 
   function updateNotationBtn() { $('notationBtn').textContent = state.notation === 'latin' ? 'DO RE MI' : 'C D E'; }
   $('notationBtn').onclick = () => {
@@ -214,8 +214,8 @@
     if (e.target.matches('input, select, textarea') || !state.current) return;
     if (e.key === '+' || e.key === '=') setShift((state.shifts[state.current.code] || 0) + 1);
     else if (e.key === '-') setShift((state.shifts[state.current.code] || 0) - 1);
-    else if (e.key === 'ArrowRight' && SONGS[state.current.index + 1]) location.hash = '#/' + SONGS[state.current.index + 1].code;
-    else if (e.key === 'ArrowLeft' && SONGS[state.current.index - 1]) location.hash = '#/' + SONGS[state.current.index - 1].code;
+    else if (e.key === 'ArrowRight' && SONGS[state.current.index + 1]) location.hash = '#' + SONGS[state.current.index + 1].code;
+    else if (e.key === 'ArrowLeft' && SONGS[state.current.index - 1]) location.hash = '#' + SONGS[state.current.index - 1].code;
   });
 
   $('count').textContent = SONGS.length + ' canciones';
