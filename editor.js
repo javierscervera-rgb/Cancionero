@@ -17,13 +17,22 @@
         <button class="icon-btn" id="edClose" aria-label="Cerrar sin guardar">✕</button>
       </div>
       <label class="field">Título <input id="edTitle" maxlength="200" autocomplete="off"></label>
-      <p class="ed-help">Escribe los acordes en la línea de encima de la letra, alineados con la sílaba. Una <b>línea en blanco</b> separa párrafos.
-        Los acordes están en <b id="edKey"></b>, tal como estás viendo la canción.</p>
-      <div class="ed-tools">
+      <div class="ed-tabs" role="tablist">
+        <button class="ed-tab on" id="edTabVis" role="tab" aria-selected="true">Acordes por sílaba</button>
+        <button class="ed-tab" id="edTabTxt" role="tab" aria-selected="false">Texto</button>
+        <span class="ed-spacer"></span>
+        <button class="pill" id="edUndo" title="Deshacer el último cambio (Ctrl+Z)" disabled>↶ Deshacer</button>
+      </div>
+      <p class="ed-help" id="edHelpVis">Pulsa una <b>sílaba</b> para ponerle, cambiarle o quitarle el acorde. Pulsa <b>¶</b> a la izquierda de una línea para empezar ahí un párrafo nuevo y <b>⇣ Unir</b> para juntar dos párrafos.
+        Los acordes están en <b class="edKeyName"></b>, tal como estás viendo la canción. Para cambiar la letra, usa la pestaña Texto.</p>
+      <p class="ed-help" id="edHelpTxt" hidden>Escribe los acordes en la línea de encima de la letra, alineados con la sílaba. Una <b>línea en blanco</b> separa párrafos.
+        Los acordes están en <b class="edKeyName"></b>, tal como estás viendo la canción.</p>
+      <div class="ed-tools" id="edTxtTools" hidden>
         <button class="pill" id="edSplit" title="Inserta un salto de párrafo antes de la línea donde está el cursor">¶ Separar párrafo aquí</button>
         <button class="pill" id="edJoin" title="Quita los saltos de párrafo de la selección, o une el párrafo del cursor con el siguiente">⇣ Unir con el siguiente</button>
       </div>
-      <div class="ed-main">
+      <div class="ed-vis" id="edVis"></div>
+      <div class="ed-main" id="edMain" hidden>
         <textarea id="edText" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off" aria-label="Letra y acordes"></textarea>
         <div class="ed-prev-wrap"><div class="ed-prev-label">Vista previa</div><div class="sheet ed-prev" id="edPrev"></div></div>
       </div>
@@ -43,6 +52,11 @@
   document.body.appendChild(el);
 
   let code = null, initial = '', initialTitle = '', armedCancel = false, prevTimer = null;
+  let notation = 'latin', history = [], tab = 'vis';
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('cm:' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('cm:' + k, JSON.stringify(v)); } catch (e) { /* nada */ } }
+  };
   const ta = $('edText');
 
   function preview() {
@@ -65,7 +79,11 @@
     $('edCode').textContent = d.code;
     $('edTitle').value = initialTitle = d.title;
     ta.value = initial = d.text;
-    $('edKey').textContent = d.keyName + (d.shift ? ' (tono transpuesto: al guardar se pasan al tono original)' : '');
+    document.querySelectorAll('.edKeyName').forEach((k) => { k.textContent = d.keyName + (d.shift ? ' (tono transpuesto: al guardar se pasan al tono original)' : ''); });
+    notation = d.notation || 'latin';
+    history = [];
+    $('edUndo').disabled = true;
+    setTab(store.get('edTab', 'vis'));
     $('edReset').hidden = !d.edited;
     $('edNote').textContent = d.temp
       ? 'Estás viendo la versión del emisor. Si guardas, se crea tu propia versión en este dispositivo.'
@@ -82,6 +100,7 @@
       armedCancel = true; $('edCancel').textContent = 'Pulsa otra vez para descartar';
       return;
     }
+    if (window.ChordEditor) window.ChordEditor.close();
     el.hidden = true; code = null;
     document.body.classList.remove('editing');
   }
@@ -170,6 +189,40 @@
     });
     e.target.value = '';
   };
+
+  // ---------- Pestañas Visual / Texto ----------
+  function setTab(t) {
+    tab = t === 'txt' ? 'txt' : 'vis';
+    store.set('edTab', tab);
+    $('edTabVis').classList.toggle('on', tab === 'vis'); $('edTabVis').setAttribute('aria-selected', String(tab === 'vis'));
+    $('edTabTxt').classList.toggle('on', tab === 'txt'); $('edTabTxt').setAttribute('aria-selected', String(tab === 'txt'));
+    $('edVis').hidden = tab !== 'vis'; $('edHelpVis').hidden = tab !== 'vis';
+    $('edMain').hidden = tab !== 'txt'; $('edHelpTxt').hidden = tab !== 'txt'; $('edTxtTools').hidden = tab !== 'txt';
+    if (tab === 'vis' && window.ChordEditor) window.ChordEditor.render();
+    else preview();
+  }
+  $('edTabVis').onclick = () => setTab('vis');
+  $('edTabTxt').onclick = () => setTab('txt');
+  // Cambios desde el editor visual: se guarda historial para deshacer
+  function setText(v) {
+    if (v === ta.value) return;
+    history.push(ta.value);
+    if (history.length > 200) history.shift();
+    $('edUndo').disabled = false;
+    ta.value = v;
+    armedCancel = false; $('edCancel').textContent = 'Cancelar';
+    schedulePreview();
+  }
+  $('edUndo').onclick = () => {
+    if (!history.length) return;
+    ta.value = history.pop();
+    $('edUndo').disabled = !history.length;
+    if (tab === 'vis' && window.ChordEditor) window.ChordEditor.render(); else preview();
+  };
+  el.addEventListener('keydown', (e) => {
+    if (tab === 'vis' && (e.ctrlKey || e.metaKey) && e.key === 'z' && !e.target.matches('input, textarea')) { e.preventDefault(); $('edUndo').click(); }
+  }, true);
+  window.EditorHost = { getText: () => ta.value, setText, notation: () => notation, container: () => $('edVis') };
 
   $('editBtn').onclick = open;
 })();

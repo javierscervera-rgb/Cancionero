@@ -360,7 +360,7 @@
       const flats = s.key ? C.prefersFlats(s.key.semi + shift, s.key.minor) : false;
       const text = s.lines.map((line, i) => s.chordFlags[i] && (shift || state.notation !== 'latin')
         ? C.transposeLine(line, shift, flats, state.notation).map((g) => g.text).join('') : line).join('\n');
-      return { code: s.code, title: s.title, text, shift, keyName: keyName(s, shift), edited: !!edits[s.code], temp: !!temp[s.code] };
+      return { code: s.code, title: s.title, text, shift, keyName: keyName(s, shift), edited: !!edits[s.code], temp: !!temp[s.code], notation: state.notation };
     },
     saveEdit(code, title, text) {
       const s = SONGS.find((x) => x.code === code);

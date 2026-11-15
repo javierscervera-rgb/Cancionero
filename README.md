@@ -21,7 +21,10 @@ Web con las canciones del cancionero Meribá, sus acordes y un **controlador de 
 
 ## Editar canciones
 
-Botón **✎ Editar** junto al título: cambia el título, la letra y los acordes, y separa o une párrafos (una línea en blanco = salto de párrafo), con vista previa.
+Botón **✎ Editar** junto al título. Dos pestañas:
+
+- **Acordes por sílaba**: cada acorde va ligado a una sílaba. Al pulsar una sílaba se abre un menú para poner, cambiar o quitar el acorde (acordes ya usados en la canción o compuestos: nota, ♭/♯, tipo —m, 7, maj7, sus4…— y bajo). También permite separar (¶) y unir párrafos, y deshacer.
+- **Texto**: título, letra y acordes como texto (línea de acordes encima de la letra; una línea en blanco = salto de párrafo), con vista previa.
 
 - Los acordes se editan en el tono en que estás viendo la canción; al guardar se pasan al tono original.
 - Los cambios se guardan **en este dispositivo** (se marcan como "✎ Editada"). Se pueden **exportar** a un archivo `.json` e **importar** en otro dispositivo. Para que sean para todos, hay que incorporarlos a `songs.js` en el repositorio.
