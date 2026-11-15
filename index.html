@@ -40,24 +40,7 @@
         <div class="tags" id="songTags"></div>
       </div>
 
-      <div class="controls" role="group" aria-label="Controlador de tono">
-        <div class="ctrl-group">
-          <span class="ctrl-label">Tono</span>
-          <button class="step" id="downBtn" aria-label="Bajar medio tono">−</button>
-          <select id="keySelect" aria-label="Elegir tono"></select>
-          <button class="step" id="upBtn" aria-label="Subir medio tono">+</button>
-          <span class="offset" id="offset"></span>
-          <button class="link-btn" id="resetBtn">Original</button>
-        </div>
-        <div class="ctrl-group">
-          <span class="ctrl-label">Tamaño</span>
-          <button class="step small" id="fontDown" aria-label="Letra más pequeña">A−</button>
-          <button class="step small" id="fontUp" aria-label="Letra más grande">A+</button>
-          <label class="toggle"><input type="checkbox" id="lyricsOnly"> Solo letra</label>
-          <label class="toggle" title="Usa una fuente de ancho fijo"><input type="checkbox" id="monoFont"> Monoespaciada</label>
-        </div>
-        <div class="ctrl-group variants" id="variants" hidden></div>
-      </div>
+      <div class="variants" id="variants" hidden></div>
 
       <pre class="sheet" id="sheet"></pre>
 
@@ -68,6 +51,23 @@
     </article>
   </main>
 </div>
+
+<nav class="toolbar" id="toolbar" aria-label="Controles de la canción" hidden>
+  <button class="tb" id="upBtn" aria-label="Subir medio tono" title="Subir medio tono">+</button>
+  <label class="tb key" title="Elegir tono">
+    <span class="key-name" id="keyName"></span>
+    <span class="key-off" id="offset"></span>
+    <select id="keySelect" aria-label="Elegir tono"></select>
+  </label>
+  <button class="tb" id="downBtn" aria-label="Bajar medio tono" title="Bajar medio tono">−</button>
+  <button class="tb small" id="resetBtn" aria-label="Volver al tono original" title="Tono original">↺</button>
+  <span class="tb-sep"></span>
+  <button class="tb" id="fontUp" aria-label="Letra más grande" title="Letra más grande">A<sup>+</sup></button>
+  <button class="tb" id="fontDown" aria-label="Letra más pequeña" title="Letra más pequeña">A<sup>−</sup></button>
+  <span class="tb-sep"></span>
+  <button class="tb small" id="lyricsOnly" aria-pressed="false" title="Mostrar solo la letra">Solo<br>letra</button>
+  <button class="tb small" id="monoFont" aria-pressed="false" title="Fuente de ancho fijo">Mono</button>
+</nav>
 
 <script src="songs.js"></script>
 <script src="chords.js"></script>

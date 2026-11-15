@@ -136,13 +136,16 @@
     sel.disabled = !s.key;
     $('upBtn').disabled = $('downBtn').disabled = !s.key;
     const sd = signed(shift);
-    $('offset').textContent = sd ? (sd > 0 ? '+' : '') + sd + ' st' : '';
-    $('resetBtn').hidden = !sd;
+    $('offset').textContent = sd ? (sd > 0 ? '+' : '') + sd : '';
+    $('keyName').textContent = keyName(s, shift);
+    $('resetBtn').disabled = !sd;
+    $('lyricsOnly').setAttribute('aria-pressed', String(state.lyricsOnly));
+    $('monoFont').setAttribute('aria-pressed', String(state.mono));
 
     const v = $('variants');
     if (s.altShifts.length) {
       v.hidden = false;
-      v.innerHTML = '<span class="ctrl-label">En el cancionero también en</span>' +
+      v.innerHTML = '<span class="var-label">También en el cancionero en</span>' +
         s.altShifts.map((d) => `<button class="chip${signed(shift) === d ? ' on' : ''}" data-shift="${d}">${keyName(s, d)}</button>`).join('');
       v.querySelectorAll('button').forEach((b) => b.onclick = () => setShift(+b.dataset.shift));
     } else v.hidden = true;
@@ -180,6 +183,7 @@
   function showSong(code) {
     const s = SONGS.find((x) => x.code === code);
     document.body.classList.toggle('reading', !!s);
+    $('toolbar').hidden = !s;
     $('backBtn').hidden = !s;
     if (!s) {
       state.current = null;
@@ -248,10 +252,19 @@
   $('resetBtn').onclick = () => setShift(0);
   $('fontUp').onclick = () => { state.font = Math.min(30, state.font + 1); store.set('font', state.font); renderSheet(); };
   $('fontDown').onclick = () => { state.font = Math.max(11, state.font - 1); store.set('font', state.font); renderSheet(); };
-  $('lyricsOnly').checked = state.lyricsOnly;
-  $('lyricsOnly').onchange = (e) => { state.lyricsOnly = e.target.checked; store.set('lyricsOnly', state.lyricsOnly); renderSheet(); };
-  $('monoFont').checked = state.mono;
-  $('monoFont').onchange = (e) => { state.mono = e.target.checked; store.set('mono', state.mono); renderSheet(); };
+  $('lyricsOnly').onclick = () => { state.lyricsOnly = !state.lyricsOnly; store.set('lyricsOnly', state.lyricsOnly); renderSheet(); };
+  $('monoFont').onclick = () => { state.mono = !state.mono; store.set('mono', state.mono); renderSheet(); };
+
+  // Barra vertical: se vuelve semitransparente tras 5 s sin actividad
+  let idleTimer = null;
+  function wake() {
+    $('toolbar').classList.remove('idle');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => $('toolbar').classList.add('idle'), 5000);
+  }
+  ['scroll', 'pointermove', 'pointerdown', 'touchstart', 'keydown', 'wheel'].forEach((t) =>
+    window.addEventListener(t, wake, { passive: true }));
+  wake();
   $('search').oninput = (e) => { state.query = e.target.value; renderList(); };
   $('backBtn').onclick = () => { location.hash = ''; };
 
