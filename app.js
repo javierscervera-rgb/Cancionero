@@ -255,6 +255,17 @@
   $('lyricsOnly').onclick = () => { state.lyricsOnly = !state.lyricsOnly; store.set('lyricsOnly', state.lyricsOnly); renderSheet(); };
   $('monoFont').onclick = () => { state.mono = !state.mono; store.set('mono', state.mono); renderSheet(); };
 
+  // Engranaje: contraer / expandir la barra
+  function setCollapsed(c) {
+    $('toolbar').classList.toggle('collapsed', c);
+    $('gearBtn').setAttribute('aria-expanded', String(!c));
+    document.body.classList.toggle('tb-collapsed', c);
+    store.set('tbCollapsed', c);
+    fitSheet();
+  }
+  $('gearBtn').onclick = () => setCollapsed(!$('toolbar').classList.contains('collapsed'));
+  setCollapsed(store.get('tbCollapsed', false));
+
   // Barra vertical: se vuelve semitransparente tras 5 s sin actividad
   let idleTimer = null;
   function wake() {

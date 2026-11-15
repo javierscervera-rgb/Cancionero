@@ -53,6 +53,10 @@
 </div>
 
 <nav class="toolbar" id="toolbar" aria-label="Controles de la canción" hidden>
+  <button class="tb gear" id="gearBtn" aria-expanded="true" aria-controls="tbItems" aria-label="Contraer o expandir el menú" title="Mostrar u ocultar controles">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.9 19.35a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.54 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.65 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9c.26.6.85 1 1.51 1.03H21a2 2 0 1 1 0 4h-.09c-.66.03-1.25.43-1.51 1.03z"/></svg>
+  </button>
+  <div class="tb-items" id="tbItems">
   <button class="tb" id="upBtn" aria-label="Subir medio tono" title="Subir medio tono">+</button>
   <label class="tb key" title="Elegir tono">
     <span class="key-name" id="keyName"></span>
@@ -67,6 +71,7 @@
   <span class="tb-sep"></span>
   <button class="tb small" id="lyricsOnly" aria-pressed="false" title="Mostrar solo la letra">Solo<br>letra</button>
   <button class="tb small" id="monoFont" aria-pressed="false" title="Fuente de ancho fijo">Mono</button>
+  </div>
 </nav>
 
 <script src="songs.js"></script>
