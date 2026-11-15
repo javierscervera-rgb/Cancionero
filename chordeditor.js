@@ -8,6 +8,22 @@
   const host = () => window.EditorHost;
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+  // ---------- Medidas en píxeles (misma fuente proporcional que la vista de la canción) ----------
+  const FONT = '"Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif';
+  const ctx = document.createElement('canvas').getContext('2d');
+  const wReg = (t) => { ctx.font = '16px ' + FONT; return ctx.measureText(t).width; };
+  const wBold = (t) => { ctx.font = '600 16px ' + FONT; return ctx.measureText(t).width; };
+  const SPACE = () => wReg(' ');
+  // x de la columna `col` en una línea de acordes (acordes en negrita, espacios normales)
+  function xChord(line, col) {
+    let x = 0; const re = /(\s+)|(\S+)/g; let m;
+    while ((m = re.exec(line)) && m.index < col) {
+      const seg = m[0].slice(0, col - m.index);
+      x += m[1] ? wReg(seg) : wBold(seg);
+    }
+    return x;
+  }
+
   // ---------- Separación en sílabas (aproximada, castellano) ----------
   const VOW = 'aeiouáéíóúüAEIOUÁÉÍÓÚÜ';
   const STRONG = 'aeoáéíóúAEOÁÉÍÓÚ';
@@ -85,17 +101,20 @@
     while ((m = re.exec(line || ''))) {
       const parts = m[0].split(/[-()\[\],.;:…]+/).filter(Boolean);
       const isChord = parts.length > 0 && parts.every((p) => C.parseChord(p));
-      out.push({ pos: m.index, text: m[0], chord: isChord });
+      out.push({ pos: m.index, x: xChord(line, m.index), text: m[0], chord: isChord });
     }
     return out;
   }
-  // Construye la línea de acordes colocando cada token en su columna (sin solaparse)
+  // Construye la línea de acordes colocando cada token lo más cerca posible de su x (sin solaparse)
   function build(toks) {
-    toks = toks.slice().sort((a, b) => a.pos - b.pos);
+    toks = toks.slice().sort((a, b) => a.x - b.x);
+    const sp = SPACE();
     let s = '';
     toks.forEach((t) => {
-      const col = Math.max(t.pos, s.length ? s.length + 1 : 0);
-      s += ' '.repeat(col - s.length) + t.text;
+      const cur = xChord(s, s.length);
+      let n = Math.round((t.x - cur) / sp);
+      if (s.length) n = Math.max(1, n); else n = Math.max(0, n);
+      s += ' '.repeat(n) + t.text;
     });
     return s;
   }
@@ -105,7 +124,7 @@
     while ((m = re.exec(line))) {
       let p = m.index;
       const arr = syllables(m[0]);
-      arr.forEach((sy, k) => { out.push({ pos: p, text: sy, wordEnd: k === arr.length - 1 }); p += sy.length; });
+      arr.forEach((sy, k) => { out.push({ pos: p, x: wReg(line.slice(0, p)), text: sy, wordEnd: k === arr.length - 1 }); p += sy.length; });
     }
     return out;
   }
@@ -145,22 +164,26 @@
     const ss = sylls(lyric);
     if (!ss.length) return esc(lyric);
     // asigna cada token de acordes a la sílaba en cuyo tramo cae
+    const lineEnd = wReg(lyric.replace(/\s+$/, ''));
     const owner = ctoks.map((t) => {
+      if (t.x > lineEnd + SPACE() * 1.5) return -1; // más allá del final de la letra
       let k = 0;
-      while (k + 1 < ss.length && ss[k + 1].pos <= t.pos) k++;
-      return t.pos > ss[ss.length - 1].pos + ss[ss.length - 1].text.length ? -1 : k; // -1: más allá del final
+      while (k + 1 < ss.length && ss[k + 1].x <= t.x + 3) k++;
+      return k;
     });
     let html = '';
     ss.forEach((sy, k) => {
       const mine = ctoks.map((t, ti) => ({ t, ti })).filter((x) => owner[x.ti] === k);
-      const to = k + 1 < ss.length ? ss[k + 1].pos : Infinity;
-      html += `<span class="cv-syl${mine.length ? ' has' : ''}${sy.wordEnd ? ' we' : ''}" data-row="${ri}" data-from="${sy.pos}" data-to="${to}" role="button" tabindex="0">` +
+      const from = k === 0 ? -1e6 : sy.x - 3;
+      const to = k + 1 < ss.length ? ss[k + 1].x - 3 : lineEnd + SPACE() * 1.5;
+      html += `<span class="cv-syl${mine.length ? ' has' : ''}${sy.wordEnd ? ' we' : ''}" data-row="${ri}" data-x="${sy.x}" data-from="${from}" data-to="${to}" role="button" tabindex="0">` +
         `<span class="cv-ch">${mine.map((x) => `<b class="${x.t.chord ? '' : 'note'}">${esc(x.t.text)}</b>`).join(' ') || '&nbsp;'}</span>` +
         `<span class="cv-tx">${esc(sy.text)}</span></span>`;
     });
     const tail = ctoks.map((t, ti) => ({ t, ti })).filter((x) => owner[x.ti] === -1);
-    const end = ss[ss.length - 1].pos + ss[ss.length - 1].text.length + 1;
-    html += `<span class="cv-syl tail${tail.length ? ' has' : ''}" data-row="${ri}" data-from="${end}" data-to="Infinity" role="button" tabindex="0" title="Acorde al final de la línea">` +
+    const endX = lineEnd + SPACE() * 1.5;
+    const tailX = tail.length ? tail[0].t.x : lineEnd + SPACE() * 2;
+    html += `<span class="cv-syl tail${tail.length ? ' has' : ''}" data-row="${ri}" data-x="${tailX}" data-from="${endX}" data-to="Infinity" role="button" tabindex="0" title="Acorde al final de la línea">` +
       `<span class="cv-ch">${tail.map((x) => `<b class="${x.t.chord ? '' : 'note'}">${esc(x.t.text)}</b>`).join(' ') || '&nbsp;'}</span><span class="cv-tx">＋</span></span>`;
     return html;
   }
@@ -170,15 +193,16 @@
     host().setText(lines.join('\n'));
     render();
   }
-  function setChordsInRange(ri, from, to, newText, add) {
+  function setChordsInRange(ri, from, to, x, newText, add) {
     const r = model.rows[ri];
     const lines = model.lines.slice();
     let ctoks = r.c !== null ? tokens(lines[r.c]) : [];
-    if (!add) ctoks = ctoks.filter((t) => !(t.pos >= from && t.pos < to) && !(to === Infinity && t.pos >= from));
+    const inRange = (t) => t.x > from && (to === Infinity || t.x <= to);
+    if (!add) ctoks = ctoks.filter((t) => !inRange(t));
     if (newText) {
-      let pos = from;
-      if (add) { const inR = ctoks.filter((t) => t.pos >= from && t.pos < to); if (inR.length) { const l = inR[inR.length - 1]; pos = l.pos + l.text.length + 1; } }
-      ctoks.push({ pos, text: newText });
+      let nx = x;
+      if (add) { const inR = ctoks.filter(inRange); if (inR.length) { const l = inR[inR.length - 1]; nx = l.x + wBold(l.text) + SPACE(); } }
+      ctoks.push({ x: nx, text: newText });
     }
     const line = build(ctoks);
     if (r.c !== null) {
@@ -190,7 +214,7 @@
     const r = model.rows[ri];
     const lines = model.lines.slice();
     let ctoks = tokens(lines[r.c]);
-    if (isAdd) { if (newText) { const last = ctoks[ctoks.length - 1]; ctoks.push({ pos: last ? last.pos + last.text.length + 3 : 0, text: newText }); } }
+    if (isAdd) { if (newText) { const last = ctoks[ctoks.length - 1]; ctoks.push({ x: last ? last.x + wBold(last.text) + SPACE() * 3 : 0, text: newText }); } }
     else if (newText) ctoks[ti].text = newText;
     else ctoks.splice(ti, 1);
     const line = build(ctoks);
@@ -233,7 +257,7 @@
     const ri = +target.dataset.row;
     pick = target.dataset.tok !== undefined || target.dataset.add
       ? { ri, tok: target.dataset.tok !== undefined ? +target.dataset.tok : null, add: !!target.dataset.add, el: target }
-      : { ri, from: +target.dataset.from, to: target.dataset.to === 'Infinity' ? Infinity : +target.dataset.to, el: target };
+      : { ri, from: +target.dataset.from, to: target.dataset.to === 'Infinity' ? Infinity : +target.dataset.to, x: +target.dataset.x, el: target };
     comp = { root: null, acc: '', q: '', bass: '' };
     const cur = pick.from !== undefined
       ? [...target.querySelectorAll('.cv-ch b')].map((b) => b.textContent)
@@ -282,7 +306,7 @@
     closeMenu();
     if (p.from !== undefined) {
       const add = !!(menu.querySelector('[data-addmode]') || {}).checked;
-      setChordsInRange(p.ri, p.from, p.to, text, add);
+      setChordsInRange(p.ri, p.from, p.to, p.x, text, add);
     } else setChordOnly(p.ri, p.tok, text, p.add);
   }
   function refreshComp() {
