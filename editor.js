@@ -36,7 +36,7 @@
       <div class="ed-foot small">
         <span class="muted" id="edNote">Los cambios se guardan en este dispositivo.</span>
         <span class="ed-spacer"></span>
-        <button class="link-btn" id="edExport">Exportar mis cambios</button>
+        <button class="link-btn" id="edExport">Exportar mis cambios y colecciones</button>
         <label class="link-btn">Importar<input type="file" id="edImport" accept="application/json,.json" hidden></label>
       </div>
     </div>`;
@@ -149,15 +149,15 @@
   };
   $('edExport').onclick = () => {
     const data = A.exportEdits();
-    const n = Object.keys(data).length;
-    if (!n) { $('edNote').textContent = 'No tienes cambios guardados todavía.'; return; }
+    const n = Object.keys(data.canciones).length;
+    if (!A.hasChanges()) { $('edNote').textContent = 'No tienes cambios guardados todavía.'; return; }
     const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'cancionero-meriba-cambios.json';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    $('edNote').textContent = `Exportadas ${n} canción(es) modificada(s).`;
+    $('edNote').textContent = `Exportados: ${n} canción(es) editada(s) y tus colecciones.`;
   };
   $('edImport').onchange = (e) => {
     const f = e.target.files && e.target.files[0];
@@ -165,7 +165,7 @@
     f.text().then((t) => {
       let n = 0;
       try { n = A.importEdits(JSON.parse(t)); } catch (err) { n = -1; }
-      $('edNote').textContent = n < 0 ? 'El archivo no es válido.' : `Importadas ${n} canción(es).`;
+      $('edNote').textContent = n < 0 ? 'El archivo no es válido.' : `Importados ${n} cambio(s) de canciones y colecciones.`;
       if (n > 0 && code) { const d = A.editData(); if (d) { ta.value = initial = d.text; $('edTitle').value = initialTitle = d.title; preview(); } }
     });
     e.target.value = '';

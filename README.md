@@ -13,6 +13,12 @@ Web con las canciones del cancionero Meribá, sus acordes y un **controlador de 
 - Atajos de teclado: `+` / `-` cambian el tono, `↑` / `↓` cambian de párrafo, `←` / `→` pasan de canción.
 - El tono elegido para cada canción se recuerda en el navegador.
 
+## Colecciones
+
+- Botón **🏷 Colecciones** en cada canción: marca o desmarca las colecciones en las que debe aparecer (puede estar en varias).
+- **+ Nueva colección** en la barra de colecciones (o desde el mismo diálogo) para crear una; las creadas por ti se pueden borrar (las canciones no se borran).
+- Se guarda en este dispositivo y se exporta/importa junto con las canciones editadas.
+
 ## Editar canciones
 
 Botón **✎ Editar** junto al título: cambia el título, la letra y los acordes, y separa o une párrafos (una línea en blanco = salto de párrafo), con vista previa.

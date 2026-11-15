@@ -24,6 +24,18 @@
 
   // ---------- Pre-proceso ----------
   const CATS = ['ESPÍRITU SANTO', 'ALABANZA', 'ADORACIÓN', 'BLESSING', 'SANACIÓN', 'VIRGEN MARÍA'];
+  // Colecciones: las del cancionero + las creadas en este dispositivo; pertenencia editable por canción
+  let coll = store.get('collections', { custom: [], songs: {} });
+  if (!coll || !Array.isArray(coll.custom) || typeof coll.songs !== 'object') coll = { custom: [], songs: {} };
+  const allCats = () => CATS.concat(coll.custom);
+  const catLabel = (c) => CATS.includes(c) ? c.charAt(0) + c.slice(1).toLowerCase() : c;
+  function applyCats(s) {
+    if (!s.baseCats) s.baseCats = (s.categories || []).slice();
+    const own = coll.songs[s.code];
+    s.categories = (own ? own : s.baseCats).filter((c) => allCats().includes(c));
+  }
+  const saveColl = () => store.set('collections', coll);
+  const cleanCat = (c) => (typeof c === 'string' ? c : '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
   const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   // Contenido original, ediciones guardadas en este dispositivo y versiones temporales del emisor
   const ORIG = {};
@@ -60,7 +72,7 @@
     s.edited = !!edits[s.code] && !t;
     prep(s);
   }
-  SONGS.forEach((s, i) => { s.index = i; load(s); });
+  SONGS.forEach((s, i) => { s.index = i; load(s); applyCats(s); });
 
   // ---------- Utilidades ----------
   const esc = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -93,13 +105,19 @@
     all.textContent = 'Todas';
     all.onclick = () => pickCategory(null);
     wrap.appendChild(all);
-    CATS.forEach((c) => {
+    allCats().forEach((c) => {
       const b = document.createElement('button');
-      b.className = 'chip' + (state.category === c ? ' on' : '');
-      b.textContent = c.charAt(0) + c.slice(1).toLowerCase();
+      b.className = 'chip' + (state.category === c ? ' on' : '') + (CATS.includes(c) ? '' : ' custom');
+      b.textContent = catLabel(c);
       b.onclick = () => pickCategory(state.category === c ? null : c);
       wrap.appendChild(b);
     });
+    const add = document.createElement('button');
+    add.className = 'chip add';
+    add.textContent = '+ Nueva colección';
+    add.title = 'Crear una colección nueva';
+    add.onclick = () => { if (window.Collections) window.Collections.openCreate(); };
+    wrap.appendChild(add);
   }
 
   function filtered() {
@@ -116,7 +134,7 @@
       `<li><a href="#${s.code}" class="${state.current === s ? 'active' : ''}">` +
       `<span class="code">${s.code}</span><span class="t">${esc(s.title)}</span>` +
       `<span class="k">${keyName(s, state.shifts[s.code] || 0)}</span></a></li>`).join('') ||
-      '<li class="empty">No hay canciones que coincidan.</li>';
+      `<li class="empty">${state.category && !state.query ? 'Esta colección está vacía. Abre una canción y pulsa «🏷 Colecciones» para añadirla.' : 'No hay canciones que coincidan.'}</li>`;
   }
 
   // ---------- Canción ----------
@@ -269,7 +287,8 @@
     $('song').hidden = false;
     $('songCode').textContent = s.code;
     $('songTitle').textContent = s.title;
-    $('songTags').innerHTML = s.categories.map((c) => `<span class="tag">${c.charAt(0) + c.slice(1).toLowerCase()}</span>`).join('') +
+    $('songTags').innerHTML = s.categories.map((c) => `<span class="tag">${esc(catLabel(c))}</span>`).join('') +
+      '<button class="tag tag-btn" id="collBtn" title="Añadir o quitar esta canción de colecciones">🏷 Colecciones</button>' +
       (s.edited ? '<span class="tag edited" title="Modificada en este dispositivo">✎ Editada</span>' : '') +
       (temp[s.code] ? '<span class="tag edited" title="Versión del emisor">↻ Versión del emisor</span>' : '');
     document.title = s.title + ' · Cancionero Meribá';
@@ -378,10 +397,19 @@
       renderList();
       notify('edit');
     },
-    exportEdits: () => JSON.parse(JSON.stringify(edits)),
+    exportEdits: () => ({ formato: 'cancionero-meriba', version: 2, canciones: JSON.parse(JSON.stringify(edits)), colecciones: JSON.parse(JSON.stringify(coll)) }),
+    hasChanges: () => Object.keys(edits).length > 0 || coll.custom.length > 0 || Object.keys(coll.songs).length > 0,
     importEdits(obj) {
       if (!obj || typeof obj !== 'object') return 0;
       let n = 0;
+      if (obj.formato === 'cancionero-meriba' && obj.colecciones && Array.isArray(obj.colecciones.custom)) {
+        obj.colecciones.custom.forEach((c) => { c = cleanCat(c); if (c && !allCats().includes(c)) coll.custom.push(c); });
+        Object.entries(obj.colecciones.songs || {}).forEach(([code, list]) => {
+          if (SONGS.some((x) => x.code === code) && Array.isArray(list)) { coll.songs[code] = list.filter((c) => allCats().includes(c)); n++; }
+        });
+        saveColl(); SONGS.forEach(applyCats); renderChips();
+      }
+      if (obj.formato === 'cancionero-meriba') obj = obj.canciones || {};
       Object.entries(obj).forEach(([code, v]) => {
         const s = SONGS.find((x) => x.code === code);
         if (!s || !v || typeof v.title !== 'string' || !Array.isArray(v.lines)) return;
@@ -393,6 +421,37 @@
       renderList();
       return n;
     },
+    // ---- Colecciones ----
+    collections: () => allCats().map((c) => ({ name: c, label: catLabel(c), custom: !CATS.includes(c), count: SONGS.filter((s) => s.categories.includes(c)).length })),
+    songCats: () => (state.current ? state.current.categories.slice() : []),
+    setSongCats(code, list) {
+      const s = SONGS.find((x) => x.code === code);
+      if (!s) return;
+      list = allCats().filter((c) => list.includes(c));
+      if (JSON.stringify(list) === JSON.stringify(s.baseCats.filter((c) => allCats().includes(c)))) delete coll.songs[code];
+      else coll.songs[code] = list;
+      saveColl(); applyCats(s);
+      if (state.current === s) showSong(code);
+      renderList();
+    },
+    createCollection(name) {
+      name = cleanCat(name);
+      if (!name) return { error: 'Escribe un nombre.' };
+      if (allCats().some((c) => fold(c) === fold(name))) return { error: 'Ya existe una colección con ese nombre.' };
+      coll.custom.push(name); saveColl(); renderChips();
+      return { name };
+    },
+    deleteCollection(name) {
+      const i = coll.custom.indexOf(name);
+      if (i < 0) return;
+      coll.custom.splice(i, 1);
+      Object.keys(coll.songs).forEach((code) => { coll.songs[code] = coll.songs[code].filter((c) => c !== name); });
+      saveColl(); SONGS.forEach(applyCats);
+      if (state.category === name) state.category = null;
+      renderChips(); renderList();
+      if (state.current) showSong(state.current.code);
+    },
+    pickCategory: (c) => pickCategory(c),
     // ---- Versión temporal del emisor (directo) ----
     songContent(code) {
       const s = SONGS.find((x) => x.code === code);

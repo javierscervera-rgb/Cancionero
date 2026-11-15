@@ -359,3 +359,31 @@ body.editing { overflow: hidden; }
   #edText { font-size: 14px; }
 }
 @media print { .edit-btn, .editor { display: none !important; } }
+
+/* ---------- Colecciones ---------- */
+.chipbar .chip.custom { border-style: dashed; }
+.chipbar .chip.add { color: var(--accent); border-color: var(--accent); background: transparent; }
+.tag-btn { border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; font: inherit; font-size: 12px; }
+.tag-btn:hover { border-color: var(--accent); color: var(--accent); }
+.coll-dlg { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.coll-card {
+  width: min(440px, 100%); max-height: min(720px, 100%); display: flex; flex-direction: column; gap: 10px;
+  background: var(--panel); color: var(--ink); border-radius: 18px; padding: 16px 18px; box-shadow: 0 30px 80px -30px rgba(0,0,0,.6);
+}
+.coll-sub { margin: 0; font-size: 13.5px; line-height: 1.45; }
+.coll-list { list-style: none; margin: 0; padding: 0; overflow: auto; border: 1px solid var(--line); border-radius: 12px; }
+.coll-list li { display: flex; align-items: center; border-bottom: 1px solid var(--line); }
+.coll-list li:last-child { border-bottom: 0; }
+.coll-item { flex: 1; display: flex; align-items: center; gap: 10px; padding: 11px 12px; cursor: pointer; font-size: 15px; }
+.coll-item input { width: 18px; height: 18px; accent-color: var(--accent); }
+.coll-name { flex: 1; }
+.coll-count { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.coll-del { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 8px 12px; font-size: 13px; }
+.coll-del:hover, .coll-del.armed { color: #d93a2b; }
+.coll-new { display: flex; gap: 8px; }
+.coll-new input { flex: 1; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 0 10px; font-size: 14px; }
+.coll-new input:focus { outline: none; border-color: var(--accent); }
+.coll-msg { margin: 0; min-height: 1em; font-size: 13px; color: var(--accent); }
+.coll-msg.bad { color: #d93a2b; }
+.small-note { font-size: 12px; }
+@media print { .tag-btn, .coll-dlg { display: none !important; } }
