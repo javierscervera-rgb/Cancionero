@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cancionero Meribá</title>
+<meta name="description" content="Cancionero Meribá con acordes y transposición de tono">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <button class="icon-btn only-mobile" id="backBtn" aria-label="Volver al índice" hidden>←</button>
+  <a class="brand" href="#/">Cancionero <strong>Meribá</strong></a>
+  <div class="top-actions">
+    <button class="pill" id="notationBtn" title="Cambiar notación">DO · C</button>
+    <button class="icon-btn" id="themeBtn" aria-label="Cambiar tema">☾</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="search-wrap">
+      <input type="search" id="search" placeholder="Buscar canción o letra…" autocomplete="off">
+    </div>
+    <div class="chips" id="chips"></div>
+    <ol class="song-list" id="songList"></ol>
+  </aside>
+
+  <main class="content" id="content">
+    <section class="welcome" id="welcome">
+      <h1>Cancionero Meribá</h1>
+      <p>Elige una canción del índice. Con el controlador de tono puedes subir o bajar la canción y todos los acordes se transponen automáticamente.</p>
+      <p class="muted" id="count"></p>
+    </section>
+
+    <article class="song" id="song" hidden>
+      <div class="song-head">
+        <span class="code" id="songCode"></span>
+        <h1 id="songTitle"></h1>
+        <div class="tags" id="songTags"></div>
+      </div>
+
+      <div class="controls" role="group" aria-label="Controlador de tono">
+        <div class="ctrl-group">
+          <span class="ctrl-label">Tono</span>
+          <button class="step" id="downBtn" aria-label="Bajar medio tono">−</button>
+          <select id="keySelect" aria-label="Elegir tono"></select>
+          <button class="step" id="upBtn" aria-label="Subir medio tono">+</button>
+          <span class="offset" id="offset"></span>
+          <button class="link-btn" id="resetBtn">Original</button>
+        </div>
+        <div class="ctrl-group">
+          <span class="ctrl-label">Tamaño</span>
+          <button class="step small" id="fontDown" aria-label="Letra más pequeña">A−</button>
+          <button class="step small" id="fontUp" aria-label="Letra más grande">A+</button>
+          <label class="toggle"><input type="checkbox" id="lyricsOnly"> Solo letra</label>
+          <label class="toggle" title="Usa una fuente de ancho fijo"><input type="checkbox" id="monoFont"> Monoespaciada</label>
+        </div>
+        <div class="ctrl-group variants" id="variants" hidden></div>
+      </div>
+
+      <pre class="sheet" id="sheet"></pre>
+
+      <nav class="pager">
+        <a id="prevLink" href="#">← Anterior</a>
+        <a id="nextLink" href="#">Siguiente →</a>
+      </nav>
+    </article>
+  </main>
+</div>
+
+<script src="songs.js"></script>
+<script src="chords.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
