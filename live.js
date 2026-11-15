@@ -121,8 +121,25 @@
     }
   });
 
+  // ---------- Bloqueo de zoom y scroll horizontal al emitir ----------
+  const vp = document.querySelector('meta[name="viewport"]');
+  const vpDefault = vp ? vp.getAttribute('content') : '';
+  const noGesture = (e) => e.preventDefault();
+  const noPinch = (e) => { if (e.touches && e.touches.length > 1) e.preventDefault(); };
+  function lockView(on) {
+    document.body.classList.toggle('emitting', on);
+    document.documentElement.classList.toggle('emitting', on);
+    if (vp) vp.setAttribute('content', on ? 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no' : vpDefault);
+    const fn = on ? 'addEventListener' : 'removeEventListener';
+    ['gesturestart', 'gesturechange'].forEach((t) => document[fn](t, noGesture, { passive: false }));
+    document[fn]('touchmove', noPinch, { passive: false });
+    if (on) window.scrollTo({ left: 0, top: window.scrollY });
+    if (window.App.refit) window.App.refit();
+  }
+
   // ---------- Modo ----------
   function setMode(m) {
+    lockView(m === 'emisor');
     live.mode = m;
     live.paused = false;
     live.last = null;

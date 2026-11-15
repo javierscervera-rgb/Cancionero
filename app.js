@@ -121,6 +121,7 @@
     $('sheet').innerHTML = out.join('\n');
     $('sheet').style.fontSize = state.font + 'px';
     $('sheet').classList.toggle('mono', state.mono);
+    fitSheet();
 
     // Controles
     const sel = $('keySelect');
@@ -150,6 +151,20 @@
   // Avisos de cambio para el modo en directo (live.js)
   const listeners = [];
   const notify = (why) => listeners.forEach((fn) => { try { fn(why); } catch (e) { /* ignorar */ } });
+
+  // Al emitir: la partitura se ajusta al ancho de la pantalla (sin scroll horizontal)
+  function fitSheet() {
+    const sh = $('sheet');
+    if (!sh) return;
+    sh.style.fontSize = state.font + 'px';
+    if (!document.body.classList.contains('emitting') || $('song').hidden) return;
+    let size = state.font;
+    for (let i = 0; i < 4 && sh.scrollWidth > sh.clientWidth + 1 && size > 11; i++) {
+      size = Math.max(11, Math.floor(size * sh.clientWidth / sh.scrollWidth * 10) / 10);
+      sh.style.fontSize = size + 'px';
+    }
+  }
+  window.addEventListener('resize', () => fitSheet());
 
   function setShift(n, fromSync) {
     const s = state.current;
@@ -222,7 +237,8 @@
         if (state.current === target) { renderSheet(); renderList(); }
       }
     },
-    onChange(fn) { listeners.push(fn); }
+    onChange(fn) { listeners.push(fn); },
+    refit: fitSheet
   };
 
   // ---------- Eventos ----------
