@@ -31,6 +31,13 @@
     s.chordFlags = s.lines.map(C.isChordLine);
     s.searchText = fold(s.title + ' ' + s.lines.filter((_, j) => !s.chordFlags[j]).join(' '));
     s.altShifts = [];
+    s.paras = [];
+    let curP = [];
+    s.lines.forEach((line, j) => {
+      if (!line.trim()) { if (curP.length) { s.paras.push(curP); curP = []; } }
+      else curP.push(j);
+    });
+    if (curP.length) s.paras.push(curP);
     (s.variants || []).forEach((v) => {
       const k = C.detectKey(v);
       if (k && s.key) {
@@ -99,29 +106,43 @@
   }
 
   // ---------- Canción ----------
+  const isLabelLine = (line) => line.trim().length < 40 &&
+    /^\s*(\(.*\)|(CORO|VERSO|PUENTE|INTRO|ESTRIBILLO|CEJILLA)\b.*)\s*$/i.test(line);
+
+  // Solo la letra de cada párrafo (para el modo Pantalla)
+  function lyricParas(s) {
+    s = s || state.current;
+    if (!s) return [];
+    return s.paras.map((idxs) => idxs
+      .filter((i) => !s.chordFlags[i] && !isLabelLine(s.lines[i]))
+      .map((i) => s.lines[i].replace(/\s+/g, ' ').trim())
+      .filter(Boolean));
+  }
+
+  const viewListeners = [];
+  const notifyView = () => viewListeners.forEach((fn) => { try { fn(); } catch (e) { /* nada */ } });
+
   function renderSheet() {
     const s = state.current;
     if (!s) return;
     const shift = state.shifts[s.code] || 0;
     const flats = s.key ? C.prefersFlats(s.key.semi + shift, s.key.minor) : false;
-    // Agrupa en párrafos: los bloques separados por líneas en blanco
-    const paras = [];
-    let cur = [];
-    const flush = () => { if (cur.length) { paras.push(cur); cur = []; } };
-    s.lines.forEach((line, i) => {
-      if (s.chordFlags[i]) {
-        if (state.lyricsOnly) return;
-        cur.push('<span class="cl">' + C.transposeLine(line, shift, flats, state.notation)
-          .map((g) => g.chord ? `<b class="ch">${esc(g.text)}</b>` : esc(g.text)).join('') + '</span>');
-      } else if (!line.trim()) {
-        flush();
-      } else {
-        const isLabel = line.trim().length < 40 &&
-          /^\s*(\(.*\)|(CORO|VERSO|PUENTE|INTRO|ESTRIBILLO|CEJILLA)\b.*)\s*$/i.test(line);
-        cur.push(isLabel ? `<span class="lbl">${esc(line)}</span>` : esc(line));
-      }
+    // Párrafos fijos (bloques separados por líneas en blanco), iguales con o sin acordes
+    const paras = s.paras.map((idxs) => {
+      const out = [];
+      idxs.forEach((i) => {
+        const line = s.lines[i];
+        if (s.chordFlags[i]) {
+          if (state.lyricsOnly) return;
+          out.push('<span class="cl">' + C.transposeLine(line, shift, flats, state.notation)
+            .map((g) => g.chord ? `<b class="ch">${esc(g.text)}</b>` : esc(g.text)).join('') + '</span>');
+        } else {
+          out.push(isLabelLine(line) ? `<span class="lbl">${esc(line)}</span>` : esc(line));
+        }
+      });
+      if (!out.length) out.push('<span class="lbl">♪</span>');
+      return out;
     });
-    flush();
     state.paraCount = paras.length;
     if (state.para !== null && state.para >= paras.length) state.para = null;
     $('sheet').innerHTML = paras.map((p, i) =>
@@ -130,6 +151,7 @@
     $('sheet').classList.toggle('mono', state.mono);
     fitSheet();
     if (state.para !== null) requestAnimationFrame(() => centerPara(state.para, false));
+    notifyView();
 
     // Controles
     const sel = $('keySelect');
@@ -193,7 +215,8 @@
     if (i !== null && (!Number.isInteger(i) || i < 0 || i >= state.paraCount)) return;
     state.para = i;
     $('sheet').querySelectorAll('.para').forEach((el) => el.classList.toggle('sel', +el.dataset.i === i));
-    if (i !== null) centerPara(i);
+    if (i !== null && !document.body.classList.contains('screen-mode')) centerPara(i);
+    notifyView();
     if (!fromSync) notify('para');
   }
   $('sheet').addEventListener('click', (e) => {
@@ -223,6 +246,7 @@
       $('welcome').hidden = false;
       document.title = 'Cancionero Meribá';
       renderList();
+      notifyView();
       return;
     }
     if (state.current !== s) state.para = null;
@@ -240,6 +264,7 @@
     if (next) { $('nextLink').href = '#' + next.code; $('nextLink').textContent = next.title + ' →'; }
     renderSheet();
     renderList();
+    notifyView();
     window.scrollTo(0, 0);
     const a = document.querySelector('.song-list a.active');
     if (a && a.scrollIntoView) a.scrollIntoView({ block: 'nearest' });
@@ -280,7 +305,24 @@
       }
     },
     onChange(fn) { listeners.push(fn); },
-    refit: fitSheet
+    refit: fitSheet,
+    // Para el modo Pantalla (screen.js)
+    lyricParas: () => lyricParas(),
+    title: () => (state.current ? state.current.title : ''),
+    para: () => state.para,
+    paraCount: () => state.paraCount,
+    selectPara: (i) => selectPara(i),
+    step(d) {
+      if (!state.current || !state.paraCount) return;
+      const n = state.para === null ? 0 : state.para + d;
+      if (n >= 0 && n < state.paraCount) selectPara(n);
+    },
+    song(d) {
+      if (!state.current) return;
+      const t = SONGS[state.current.index + d];
+      if (t) location.hash = '#' + t.code;
+    },
+    onView(fn) { viewListeners.push(fn); }
   };
 
   // ---------- Eventos ----------
@@ -335,7 +377,7 @@
   };
 
   document.addEventListener('keydown', (e) => {
-    if (e.target.matches('input, select, textarea') || !state.current) return;
+    if (e.target.matches('input, select, textarea') || !state.current || document.body.classList.contains('screen-mode')) return;
     if (e.key === '+' || e.key === '=') setShift((state.shifts[state.current.code] || 0) + 1);
     else if (e.key === '-') setShift((state.shifts[state.current.code] || 0) - 1);
     else if (e.key === 'ArrowDown' && state.paraCount) { e.preventDefault(); selectPara(state.para === null ? 0 : Math.min(state.paraCount - 1, state.para + 1)); }

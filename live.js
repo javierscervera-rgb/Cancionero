@@ -192,7 +192,9 @@
     } else bar.hidden = true;
     const barKey = bar.hidden ? '' : $('liveBarText').textContent + '|' + $('liveBarBtn').hidden;
     if (barKey !== live.barKey) { live.barKey = barKey; if (barKey) expandBar(); }
-    if (live.paused) { bar.classList.remove('mini'); clearTimeout(live.barTimer); }
+    // aro rojo sin relleno cuando el receptor no está siguiendo a nadie (en pausa o sin emisor)
+    const notFollowing = live.mode === 'receptor' && (live.paused || !ems.some((p) => p.peer === live.following));
+    bar.classList.toggle('off', notFollowing);
     document.body.classList.toggle('live-on', live.mode !== 'off');
   }
 
@@ -200,7 +202,7 @@
     const bar = $('liveBar');
     bar.classList.remove('mini');
     clearTimeout(live.barTimer);
-    live.barTimer = setTimeout(() => { if (!live.paused) bar.classList.add('mini'); }, 10000);
+    live.barTimer = setTimeout(() => bar.classList.add('mini'), 10000);
   }
 
   let flashTimer = null;

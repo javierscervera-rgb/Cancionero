@@ -13,12 +13,23 @@ Web con las canciones del cancionero Meribá, sus acordes y un **controlador de 
 - Atajos de teclado: `+` / `-` cambian el tono, `↑` / `↓` cambian de párrafo, `←` / `→` pasan de canción.
 - El tono elegido para cada canción se recuerda en el navegador.
 
+## Modo Pantalla (proyección)
+
+Botón **Pantalla** en la barra de la derecha: fondo negro y solo la letra (sin acordes), blanca y centrada.
+
+- Muestra el párrafo seleccionado (o el título si no hay ninguno). Con el modo en directo sigue el párrafo del emisor.
+- Ajustes (⚙): tamaño de letra, fuente (Helvetica, Montserrat, Lato, Nunito, Oswald, Georgia, Merriweather, Playfair), negrita y márgenes arriba/abajo/izquierda/derecha. Se recuerdan en el navegador.
+- Si la letra no cabe en el espacio de proyección, se reduce automáticamente.
+- **Pantalla completa** (⛶ o tecla `F`): oculta todo, solo letra blanca sobre negro. Para salir: `Esc`, `F` o mantener pulsado.
+- Navegación: tocar el tercio izquierdo = párrafo anterior, resto = siguiente; teclas `←` `→` `↑` `↓` `Espacio` `RePág` `AvPág` (sirve con un mando de presentaciones); `N` / `P` canción siguiente / anterior.
+
 ## Modo en directo
 
 En la versión publicada en Claude aparece el botón **En directo**:
 
 - **Emitir**: comparte tu canción, el tono y el párrafo que marcas (al tocar un párrafo se centra en la pantalla).
 - **Recibir**: tu pantalla sigue al emisor. Si navegas por tu cuenta, el seguimiento se pausa y aparece "Volver al directo".
+- El aviso de estado se ve completo 10 s cada vez que cambia y luego queda como un punto rojo; si no estás siguiendo al emisor, es un aro rojo sin relleno.
 - Si hay varios emisores, cada receptor elige a quién seguir.
 
 Transporte:
