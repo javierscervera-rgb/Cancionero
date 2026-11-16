@@ -96,3 +96,9 @@ Solo hay una versión del cancionero: la guardada en Google Drive (cuenta de la 
 - El botón **☁ Drive** muestra el estado, los últimos cambios y permite poner tu nombre para el registro.
 - Para volver a una copia de seguridad, hay que sustituir el contenido de `cancionero.json` y subir el número de versión (`rev`), también en la propiedad `REV` del script, para que todos los dispositivos se actualicen.
 - Los archivos `songs*.js` del repositorio sirven de reserva sin conexión. Si se añade una canción nueva a esos archivos, la web la sube sola a Drive la primera vez que alguien la abre.
+
+## Móvil
+
+- La lista de canciones es un panel que se desliza desde abajo: al abrir una canción se recoge (queda una pestaña abajo con la canción actual) y se vuelve a abrir deslizándola hacia arriba o tocándola. La cabecera no cambia.
+- El cancionero (lista de reproducción) se elige en un desplegable.
+- El buscador, el tamaño de letra y el abecedario se quedan fijos arriba al desplazar la lista (también en el ordenador).

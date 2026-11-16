@@ -144,8 +144,8 @@
     state.letter = null;
     renderChips();
     renderList();
-    if (state.current && matchMedia('(max-width: 820px)').matches) location.hash = '';
-    else $('sidebar').scrollTop = 0;
+    if (isMobile()) setSheet(true);
+    $('sidebar').scrollTop = 0;
     const on = document.querySelector('#chips .chip.on');
     if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
   }
@@ -166,7 +166,15 @@
     box.innerHTML = LISTS.map((l) => `<button class="list-item${l.id === state.list ? ' on' : ''}" data-list="${l.id}" aria-pressed="${l.id === state.list}">
         <span class="list-ico">♫</span><span class="list-txt"><span class="list-name">${esc(l.name)}</span>${l.sub ? `<span class="list-sub">${esc(l.sub)}</span>` : ''}</span>
         <span class="list-n">${listSongs(l.id).length}</span></button>`).join('');
-    box.querySelectorAll('[data-list]').forEach((b) => { b.onclick = () => setList(b.dataset.list); });
+    box.querySelectorAll('[data-list]').forEach((b) => {
+      b.onclick = () => {
+        // en el móvil es un desplegable: la lista elegida lo abre o lo cierra
+        if (isMobile() && b.dataset.list === state.list) { box.classList.toggle('open'); return; }
+        box.classList.remove('open');
+        setList(b.dataset.list);
+      };
+    });
+    updateSheetLabel();
     const cur = listById(state.list);
     const w = $('welcome');
     if (w) { w.querySelector('h1').textContent = cur.name; $('count').textContent = listSongs(cur.id).length + ' canciones'; }
@@ -535,10 +543,69 @@
   function route() {
     const code = decodeURIComponent(location.hash.replace(/^#\/?/, ''));
     showSong(code);
+    // móvil: al abrir una canción se recoge la lista; sin canción, se despliega
+    if (isMobile()) setSheet(!state.current);
     const fromSync = syncHash !== null && syncHash === code;
     syncHash = null;
     if (!fromSync) notify('song');
   }
+
+  // ---------- Móvil: lista de canciones en un panel deslizable desde abajo ----------
+  const mq = matchMedia('(max-width: 820px)');
+  function isMobile() { return mq.matches; }
+  function setSheet(open) {
+    const b = document.body;
+    if (!isMobile()) { b.classList.remove('sheet-open', 'sheet-closed'); return; }
+    if (!open && !state.current) open = true; // sin canción abierta no hay nada detrás
+    b.classList.toggle('sheet-open', open);
+    b.classList.toggle('sheet-closed', !open);
+    $('sheetHandle').setAttribute('aria-expanded', String(open));
+    if (!open) { $('lists').classList.remove('open'); $('sidebar').scrollTop = 0; }
+    updateSheetLabel();
+  }
+  function updateSheetLabel() {
+    const l = $('sheetLabel');
+    if (!l) return;
+    const cur = listById(state.list);
+    const open = document.body.classList.contains('sheet-open');
+    l.textContent = open || !state.current ? 'Lista de canciones' : state.current.code + ' · ' + state.current.title;
+  }
+  (function () {
+    const h = $('sheetHandle'), sb = $('sidebar');
+    let y0 = 0, startOpen = false, moved = false, dragging = false, travel = 0, last = 0;
+    const PEEK = 58;
+    h.addEventListener('pointerdown', (e) => {
+      if (!isMobile()) return;
+      dragging = true; moved = false; y0 = e.clientY; last = 0;
+      startOpen = document.body.classList.contains('sheet-open');
+      travel = sb.getBoundingClientRect().height - PEEK;
+      h.setPointerCapture(e.pointerId);
+    });
+    h.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const dy = e.clientY - y0;
+      if (!moved && Math.abs(dy) < 6) return;
+      if (!moved) { moved = true; document.body.classList.add('sheet-dragging'); }
+      last = dy;
+      const t = Math.max(0, Math.min(travel, (startOpen ? 0 : travel) + dy));
+      sb.style.transform = 'translateY(' + t + 'px)';
+    });
+    const end = () => {
+      if (!dragging) return;
+      dragging = false;
+      document.body.classList.remove('sheet-dragging');
+      sb.style.transform = '';
+      if (!moved) { setSheet(!document.body.classList.contains('sheet-open')); return; }
+      if (last < -40) setSheet(true);
+      else if (last > 40) setSheet(false);
+      else setSheet(startOpen);
+    };
+    h.addEventListener('pointerup', end);
+    h.addEventListener('pointercancel', end);
+    // tocar una canción (aunque sea la que ya está abierta) recoge el panel
+    $('songList').addEventListener('click', (e) => { if (isMobile() && e.target.closest('a')) setTimeout(() => setSheet(false), 0); });
+    mq.addEventListener('change', () => setSheet(!state.current));
+  })();
 
   // Interfaz para live.js
   window.App = {
