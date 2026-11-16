@@ -18,6 +18,7 @@
     list: null,
     para: null,
     paraCount: 0,
+    blank: false,          // pantalla de presentación en negro (sin letra)
     query: '',
     current: null
   };
@@ -337,6 +338,18 @@
     if (!fromSync) notify('shift');
   }
 
+  // ---------- Pantalla en negro (la presentación se queda sin letra) ----------
+  function setBlank(b, fromSync) {
+    b = !!b;
+    if (b === state.blank) return;
+    state.blank = b;
+    $('blankBtn').setAttribute('aria-pressed', String(b));
+    document.body.classList.toggle('blanked', b);
+    notifyView();
+    if (!fromSync) notify('blank');
+  }
+  $('blankBtn').onclick = () => setBlank(!state.blank);
+
   // ---------- Comentario de la canción (no se ve en el modo Pantalla) ----------
   const noteOf = (s) => (notes[s.code] !== undefined ? notes[s.code] : (s.comment || ''));
   function renderNote(s) {
@@ -438,9 +451,10 @@
   window.App = {
     getState() {
       const s = state.current;
-      return { song: s ? s.code : '', shift: s ? (state.shifts[s.code] || 0) : 0, para: s ? state.para : null };
+      return { song: s ? s.code : '', shift: s ? (state.shifts[s.code] || 0) : 0, para: s ? state.para : null, blank: state.blank };
     },
-    apply({ song, shift, para }, opts) {
+    apply({ song, shift, para, blank }, opts) {
+      if (typeof blank === 'boolean') setBlank(blank, true);
       const cur = state.current ? state.current.code : '';
       if (typeof song === 'string' && song !== cur) {
         if (song && !SONGS.some((x) => x.code === song)) return;
@@ -460,6 +474,8 @@
       }
     },
     onChange(fn) { listeners.push(fn); },
+    blank: () => state.blank,
+    setBlank: (b) => setBlank(b),
     refit: fitSheet,
     // Para el modo Pantalla (screen.js)
     lyricParas: () => lyricParas(),
@@ -757,6 +773,7 @@
     if (receiving && ['+', '=', '-'].includes(e.key)) return;
     if (e.key === '+' || e.key === '=') setShift((state.shifts[state.current.code] || 0) + 1);
     else if (e.key === '-') setShift((state.shifts[state.current.code] || 0) - 1);
+    else if ((e.key === 'b' || e.key === 'B') && !(receiving && !document.body.classList.contains('lyrics-op'))) setBlank(!state.blank);
     else if (e.key === 'ArrowDown' && state.paraCount) { e.preventDefault(); selectPara(state.para === null ? 0 : Math.min(state.paraCount - 1, state.para + 1)); }
     else if (e.key === 'ArrowUp' && state.paraCount) { e.preventDefault(); selectPara(state.para === null ? 0 : Math.max(0, state.para - 1)); }
     else if (e.key === 'ArrowRight' && SONGS[state.current.index + 1]) location.hash = '#' + SONGS[state.current.index + 1].code;

@@ -500,3 +500,11 @@ body:not(.can-edit) #editBtn, body:not(.can-edit) #noteBtn, body:not(.can-edit) 
 .editors-btn { margin: 0; font-size: 12px; text-transform: none; letter-spacing: 0; }
 .seg.seg4 { grid-template-columns: repeat(4, 1fr); }
 .seg.seg4 button { font-size: 12.5px; padding: 9px 2px; }
+
+/* Pantalla en negro */
+.tb.blank-btn { color: var(--muted); }
+.tb.blank-btn[aria-pressed="true"] { background: #111; border-color: #c62828; color: #ff5252; }
+body.receiving:not(.lyrics-op) #blankBtn { display: none; }
+.sb.blank-sb { display: inline-flex; align-items: center; gap: 4px; }
+.sb.blank-sb[aria-pressed="true"] { background: #c62828; border-color: #c62828; color: #fff; }
+body.receiving:not(.lyrics-op) #scrBlank { display: none; }

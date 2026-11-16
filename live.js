@@ -32,6 +32,7 @@
     myPeer: null,
     following: null,        // peer del líder que sigo (receptor y Letras)
     paraT: 0,               // líder: cuándo cambió el párrafo por última vez
+    blankT: 0,              // cuándo se puso o quitó la pantalla en negro (líder o Letras)
     paused: false,
     last: null,             // último estado recibido del emisor seguido
     seq: 0,
@@ -43,8 +44,8 @@
   // ---------- Emisor ----------
   function snapshot() {
     const s = window.App.getState();
-    if (live.mode === 'letras') return { v: 2, kind: 'para', seq: ++live.seq, song: live.last ? live.last.song : '', para: live.last ? live.last.para : null, pt: live.last ? live.last.pt : 0 };
-    return { v: 2, seq: ++live.seq, song: s.song, shift: s.shift, para: s.para, pt: live.paraT, rv: window.Cloud ? window.Cloud.rev() : 0 };
+    if (live.mode === 'letras') return { v: 2, kind: 'para', seq: ++live.seq, song: live.last ? live.last.song : '', para: live.last ? live.last.para : null, pt: live.last ? live.last.pt : 0, blank: s.blank, bt: live.blankT };
+    return { v: 2, seq: ++live.seq, song: s.song, shift: s.shift, para: s.para, pt: live.paraT, blank: s.blank, bt: live.blankT, rv: window.Cloud ? window.Cloud.rev() : 0 };
   }
   const followerMode = () => live.mode === 'receptor' || live.mode === 'letras';
   function send() {
@@ -64,6 +65,15 @@
     if (!d || typeof d !== 'object' || d.v !== 2 || typeof d.song !== 'string') return;
     const para = Number.isInteger(d.para) ? d.para : null;
     const pt = typeof d.pt === 'number' ? d.pt : 0;
+    // pantalla en negro: gana el cambio más reciente (del líder o de Letras)
+    if (typeof d.blank === 'boolean' && typeof d.bt === 'number' && d.bt > live.blankT && live.mode !== 'off' &&
+        (d.kind === 'para' ? isRole(msg.peer, 'letras') : (live.mode === 'emisor' ? false : (!live.following || msg.peer === live.following)))) {
+      live.blankT = d.bt;
+      if (window.App.blank() !== d.blank) {
+        window.App.apply({ blank: d.blank });
+        if (live.mode === 'emisor') setTimeout(send, 250);
+      }
+    }
     // ---- Letras ha pasado un párrafo ----
     if (d.kind === 'para') {
       if (!isRole(msg.peer, 'letras')) return;
@@ -119,6 +129,12 @@
 
   // Cambios hechos por la propia persona
   window.App.onChange((why) => {
+    if (why === 'blank') {
+      // poner o quitar la pantalla en negro: solo el líder o Letras lo envían
+      live.blankT = Date.now();
+      if (live.mode === 'emisor' || live.mode === 'letras') send();
+      return;
+    }
     if (live.mode === 'emisor') {
       if (!live.applying && (why === 'para' || why === 'song')) live.paraT = Date.now();
       send();

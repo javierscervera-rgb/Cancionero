@@ -40,6 +40,7 @@
           <span class="sv" id="scrPos"></span>
           <button class="sb" id="scrNext" title="Párrafo siguiente (→ o espacio)">▶</button>
         </span>
+        <button class="sb blank-sb" id="scrBlank" aria-pressed="false" title="Pantalla en negro, sin letra (B)"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/><path d="M3.5 2.5l17 17"/></svg><span class="txt"> En negro</span></button>
         <button class="sb" id="scrCfg" aria-expanded="false" title="Mostrar ajustes de letra, fuente y márgenes">⚙<span class="txt"> Ajustes</span></button>
         <button class="sb accent" id="scrFs" title="Pantalla completa (F)">⛶<span class="txt"> Pantalla completa</span></button>
       </div>
@@ -90,6 +91,7 @@
   function content() {
     const paras = A.lyricParas();
     const i = A.para();
+    if (A.blank && A.blank()) return '';
     if (!A.title()) return '';
     if (i === null || i === undefined) return A.title();
     return (paras[i] || []).join('\n');
@@ -132,6 +134,7 @@
     ['t', 'b', 'l', 'r'].forEach((k) => { $('scrM' + k).textContent = cfg[k] + '%'; });
     sel.value = cfg.font;
     $('scrBold').setAttribute('aria-pressed', String(cfg.bold));
+    $('scrBlank').setAttribute('aria-pressed', String(!!(A.blank && A.blank())));
     loadFont(cfg.font);
     fit();
   }
@@ -238,6 +241,7 @@
     else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(k)) { e.preventDefault(); A.step(-1); }
     else if (k === 'f' || k === 'F') { if (isFs() || clean) { exitFs(); setClean(false); } else enterFs(); }
     else if (k === 'Escape') { if (clean && !isFs()) setClean(false); else if (!isFs()) close(); }
+    else if ((k === 'b' || k === 'B') && !(window.Live && window.Live.receiving())) A.setBlank(!A.blank());
     else if (k === 'n' || k === 'N') A.song(1);
     else if (k === 'p' || k === 'P') A.song(-1);
   });
@@ -252,6 +256,7 @@
     window.addEventListener(t, () => { if (on && !clean) wake(); }, { passive: true }));
   window.addEventListener('resize', () => { if (on) fit(); });
 
+  $('scrBlank').onclick = (e) => { e.stopPropagation(); A.setBlank(!A.blank()); };
   A.onView(render);
 
   // Botón en la barra de controles
