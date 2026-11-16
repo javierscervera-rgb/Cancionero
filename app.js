@@ -20,6 +20,8 @@
     paraCount: 0,
     blank: false,          // pantalla de presentación en negro (sin letra)
     query: '',
+    letter: null,          // filtro por inicial del título (A, B… o #)
+    listFont: store.get('listFont', 14),
     current: null
   };
 
@@ -153,7 +155,7 @@
     const changed = id !== state.list;
     state.list = id;
     store.set('list', id);
-    if (changed) state.category = null;
+    if (changed) { state.category = null; state.letter = null; }
     renderLists(); renderChips(); renderList();
     if (changed && !keepSong && state.current && state.current.list !== id) location.hash = '';
   }
@@ -192,22 +194,67 @@
     wrap.appendChild(add);
   }
 
-  function filtered() {
+  // Inicial del título para el índice alfabético (sin tildes; Ñ aparte; números → #)
+  const ABC = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'L', 'M', 'N', 'Ñ', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'Y', 'Z', '#'];
+  function initialOf(t) {
+    const m = (t || '').replace(/^[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9]+/, '');
+    const c = m.charAt(0);
+    if (!c) return '#';
+    if (/[0-9]/.test(c)) return '#';
+    if (c === 'Ñ' || c === 'ñ') return 'Ñ';
+    return fold(c).toUpperCase();
+  }
+  function filtered(ignoreLetter) {
     const q = fold(state.query.trim());
     return SONGS.filter((s) =>
       s.list === state.list &&
       (!state.category || s.categories.includes(state.category)) &&
+      (ignoreLetter || !state.letter || initialOf(s.title) === state.letter) &&
       (!q || s.searchText.includes(q) || s.code.toLowerCase().includes(q)));
   }
+  function setLetter(l) {
+    state.letter = l && l !== state.letter ? l : null;
+    $('abcGrid').hidden = true; $('abcBtn').setAttribute('aria-expanded', 'false');
+    renderList();
+    $('sidebar').scrollTop = 0;
+  }
+  function renderAbc() {
+    const have = new Set(filtered(true).map((s) => initialOf(s.title)));
+    $('abcGrid').innerHTML = ABC.map((l) => `<button class="abc-cell${l === state.letter ? ' on' : ''}" data-l="${l}"${have.has(l) || l === state.letter ? '' : ' disabled'}>${l}</button>`).join('');
+    $('abcGrid').querySelectorAll('[data-l]').forEach((b) => { b.onclick = () => setLetter(b.dataset.l); });
+    $('abcBtn').classList.toggle('on', !!state.letter);
+    $('abcBtn').textContent = state.letter ? state.letter : 'ABC';
+    const pill = $('letterPill');
+    pill.hidden = !state.letter;
+    if (state.letter) {
+      pill.innerHTML = `Empiezan por <b>${state.letter === '#' ? 'un número' : state.letter}</b> <button id="letterClear" aria-label="Quitar el filtro por letra">✕</button>`;
+      $('letterClear').onclick = () => setLetter(null);
+    }
+  }
+  function applyListFont() {
+    $('sidebar').style.setProperty('--lf', state.listFont + 'px');
+    $('listFontDown').disabled = state.listFont <= 11;
+    $('listFontUp').disabled = state.listFont >= 24;
+  }
+  $('listFontUp').onclick = () => { state.listFont = Math.min(24, state.listFont + 1); store.set('listFont', state.listFont); applyListFont(); };
+  $('listFontDown').onclick = () => { state.listFont = Math.max(11, state.listFont - 1); store.set('listFont', state.listFont); applyListFont(); };
+  $('abcBtn').onclick = () => {
+    const open = $('abcGrid').hidden;
+    renderAbc();
+    $('abcGrid').hidden = !open;
+    $('abcBtn').setAttribute('aria-expanded', String(open));
+  };
+  applyListFont();
 
   function renderList() {
+    renderAbc();
     const list = $('songList');
     const items = filtered();
     list.innerHTML = items.map((s) =>
       `<li><a href="#${s.code}" class="${state.current === s ? 'active' : ''}">` +
       `<span class="code">${s.code}</span><span class="t">${esc(s.title)}</span>` +
       `<span class="k">${keyName(s, state.shifts[s.code] || 0)}</span></a></li>`).join('') ||
-      `<li class="empty">${state.category && !state.query ? 'Esta colección está vacía. Abre una canción y pulsa «🏷 Colecciones» para añadirla.' : 'No hay canciones que coincidan.'}</li>`;
+ `<li class="empty">${state.letter ? 'No hay canciones que empiecen por esa letra aquí.' : state.category && !state.query ? 'Esta colección está vacía. Abre una canción y pulsa «🏷 Colecciones» para añadirla.' : 'No hay canciones que coincidan.'}</li>`;
   }
 
   // ---------- Canción ----------
