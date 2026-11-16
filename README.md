@@ -81,3 +81,14 @@ Abre `index.html` en el navegador (funciona sin servidor) o publícalo con GitHu
 - `songs-adoracion.js` — Adoración (transcrito del PDF).
 
 Para corregir una canción, edita su texto en `songs.js` (cada canción es una lista de líneas; las líneas de acordes se detectan automáticamente).
+
+
+## Cancionero compartido (Google Drive)
+
+Solo hay una versión del cancionero: la guardada en Google Drive (cuenta de la parroquia, carpeta `Cancionero/cancionero.json`). La web la carga al abrirse y la comprueba cada poco tiempo; cualquiera puede editar letras, acordes, comentarios y colecciones, y el cambio se guarda en Drive para todos.
+
+- Un script de Google Apps Script (`apps-script/Code.gs`, proyecto «Cancionero» de la cuenta de la parroquia) hace de intermediario.
+- Antes del primer cambio de cada día se guarda una copia de seguridad en `Cancionero/Copias de seguridad/cancionero-AAAA-MM-DD.json`.
+- El botón **☁ Drive** muestra el estado, los últimos cambios y permite poner tu nombre para el registro.
+- Para volver a una copia de seguridad, hay que sustituir el contenido de `cancionero.json` y subir el número de versión (`rev`), también en la propiedad `REV` del script, para que todos los dispositivos se actualicen.
+- Los archivos `songs*.js` del repositorio solo se usan la primera vez que se abre la web sin conexión.

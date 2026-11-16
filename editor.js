@@ -1,5 +1,5 @@
 // Editor de canciones: título, letra, acordes y saltos de párrafo.
-// Los cambios se guardan en este dispositivo (localStorage) y se pueden exportar/importar.
+// Solo para editores: los cambios se guardan en el cancionero compartido (Drive).
 (function () {
   'use strict';
   const A = window.App, C = window.Chords;
@@ -37,16 +37,13 @@
         <div class="ed-prev-wrap"><div class="ed-prev-label">Vista previa</div><div class="sheet ed-prev" id="edPrev"></div></div>
       </div>
       <div class="ed-foot">
-        <button class="link-btn" id="edReset" hidden>Restaurar la versión original</button>
+        <button class="link-btn" id="edReset" hidden>Descartar los cambios sin guardar en Drive</button>
         <span class="ed-spacer"></span>
         <button class="pill" id="edCancel">Cancelar</button>
         <button class="pill primary" id="edSave">Guardar</button>
       </div>
       <div class="ed-foot small">
-        <span class="muted" id="edNote">Los cambios se guardan en este dispositivo.</span>
-        <span class="ed-spacer"></span>
-        <button class="link-btn" id="edExport">Exportar mis cambios, colecciones y comentarios</button>
-        <label class="link-btn">Importar<input type="file" id="edImport" accept="application/json,.json" hidden></label>
+        <span class="muted" id="edNote">Se guarda en Drive para todos.</span>
       </div>
     </div>`;
   document.body.appendChild(el);
@@ -85,9 +82,7 @@
     $('edUndo').disabled = true;
     setTab(store.get('edTab', 'vis'));
     $('edReset').hidden = !d.edited;
-    $('edNote').textContent = d.temp
-      ? 'Estás viendo la versión del emisor. Si guardas, se crea tu propia versión en este dispositivo.'
-      : 'Los cambios se guardan en este dispositivo.';
+    if (window.Cloud && window.Cloud.label) $('edNote').textContent = window.Cloud.label();
     armedCancel = false; $('edCancel').textContent = 'Cancelar';
     el.hidden = false;
     document.body.classList.add('editing');
@@ -158,38 +153,14 @@
   $('edClose').onclick = () => close(false);
   $('edReset').onclick = () => {
     if ($('edReset').dataset.armed !== '1') {
-      $('edReset').dataset.armed = '1'; $('edReset').textContent = 'Pulsa otra vez para restaurar el original';
-      setTimeout(() => { $('edReset').dataset.armed = ''; $('edReset').textContent = 'Restaurar la versión original'; }, 4000);
+      $('edReset').dataset.armed = '1'; $('edReset').textContent = 'Pulsa otra vez para descartarlos';
+      setTimeout(() => { $('edReset').dataset.armed = ''; $('edReset').textContent = 'Descartar los cambios sin guardar en Drive'; }, 4000);
       return;
     }
     $('edReset').dataset.armed = '';
     A.resetEdit(code);
     close(true);
   };
-  $('edExport').onclick = () => {
-    const data = A.exportEdits();
-    const n = Object.keys(data.canciones).length;
-    if (!A.hasChanges()) { $('edNote').textContent = 'No tienes cambios guardados todavía.'; return; }
-    const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'cancionero-cambios.json';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    $('edNote').textContent = `Exportados: ${n} canción(es) editada(s), tus colecciones y tus comentarios.`;
-  };
-  $('edImport').onchange = (e) => {
-    const f = e.target.files && e.target.files[0];
-    if (!f) return;
-    f.text().then((t) => {
-      let n = 0;
-      try { n = A.importEdits(JSON.parse(t)); } catch (err) { n = -1; }
-      $('edNote').textContent = n < 0 ? 'El archivo no es válido.' : `Importados ${n} cambio(s) de canciones y colecciones.`;
-      if (n > 0 && code) { const d = A.editData(); if (d) { ta.value = initial = d.text; $('edTitle').value = initialTitle = d.title; preview(); } }
-    });
-    e.target.value = '';
-  };
-
   // ---------- Pestañas Visual / Texto ----------
   function setTab(t) {
     tab = t === 'txt' ? 'txt' : 'vis';

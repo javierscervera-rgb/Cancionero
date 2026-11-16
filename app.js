@@ -28,27 +28,39 @@
     : [{ id: 'meriba', name: 'Cancionero Meribá', cats: ['ESPÍRITU SANTO', 'ALABANZA', 'ADORACIÓN', 'BLESSING', 'SANACIÓN', 'VIRGEN MARÍA'] }];
   SONGS.forEach((s) => { if (!s.list) s.list = LISTS[0].id; });
   const listById = (id) => LISTS.find((l) => l.id === id) || LISTS[0];
-  const CATS = LISTS.flatMap((l) => l.cats || []); // colecciones de todos los cancioneros
-  const UPPER_CATS = listById('meriba').cats || [];
+  let CATS = LISTS.flatMap((l) => l.cats || []); // colecciones de todos los cancioneros
+  let UPPER_CATS = listById('meriba').cats || [];
+  let baseCustom = (window.CLOUD_CATS || []).slice(); // colecciones creadas por los editores (compartidas)
   // Colecciones: las del cancionero + las creadas en este dispositivo; pertenencia editable por canción
   let coll = store.get('collections', { custom: [], songs: {} });
   if (!coll || !Array.isArray(coll.custom) || typeof coll.songs !== 'object') coll = { custom: [], songs: {} };
-  const allCats = () => CATS.concat(coll.custom.filter((c) => !CATS.includes(c)));
-  const catsFor = (listId) => (listById(listId).cats || []).concat(coll.custom.filter((c) => !CATS.includes(c)));
+  if (!Array.isArray(coll.removed)) coll.removed = [];
+  const customCats = () => baseCustom.concat(coll.custom).filter((c, i, a) => !CATS.includes(c) && !coll.removed.includes(c) && a.indexOf(c) === i);
+  const allCats = () => CATS.concat(customCats());
+  const catsFor = (listId) => (listById(listId).cats || []).concat(customCats());
   const catLabel = (c) => UPPER_CATS.includes(c) ? c.charAt(0) + c.slice(1).toLowerCase() : c;
   function applyCats(s) {
     if (!s.baseCats) s.baseCats = (s.categories || []).slice();
     const own = coll.songs[s.code];
     s.categories = (own ? own : s.baseCats).filter((c) => allCats().includes(c));
   }
-  const saveColl = () => store.set('collections', coll);
+  const localListeners = [];
+  const localChanged = () => localListeners.forEach((f) => { try { f(); } catch (e) { /* nada */ } });
+  const saveColl = () => { store.set('collections', coll); localChanged(); };
   const cleanCat = (c) => (typeof c === 'string' ? c : '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
   const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   // Contenido original, ediciones guardadas en este dispositivo y versiones temporales del emisor
   const ORIG = {};
-  SONGS.forEach((s) => { ORIG[s.code] = { title: s.title, lines: s.lines.slice() }; });
-  let edits = store.get('edits', {});
-  let notes = store.get('notes', {}); // comentarios por canción (este dispositivo)
+  SONGS.forEach((s) => { ORIG[s.code] = { title: s.title, lines: s.lines.slice() }; s.baseCats = (s.categories || []).slice(); });
+  // Con el cancionero compartido (Drive) solo hay una versión: los cambios antiguos de este
+  // dispositivo se descartan una vez. Después, solo los editores guardan, y va directo a Drive.
+  if (/^https?:/.test(window.CLOUD_URL || '') && !store.get('cloudV1', false)) {
+    ['edits', 'notes', 'collections'].forEach((k) => { try { localStorage.removeItem('cm:' + k); } catch (e) { /* nada */ } });
+    coll = { custom: [], songs: {}, removed: [] };
+    store.set('cloudV1', true);
+  }
+  let edits = store.get('edits', {}); // cambios de un editor aún no confirmados por Drive
+  let notes = store.get('notes', {}); // comentarios aún no confirmados por Drive
   const temp = {}; // code -> {title, lines} | 'orig'  (mientras se recibe en directo)
 
   function prep(s) {
@@ -81,21 +93,32 @@
     prep(s);
   }
   // Limpieza: cambios locales que ya están incorporados al cancionero publicado
-  (function cleanup() {
+  // (también se usa al recibir una versión nueva del cancionero compartido: lo ya subido deja de estar pendiente)
+  function reconcile() {
     let changed = false;
     Object.keys(edits).forEach((code) => {
       const o = ORIG[code], e = edits[code];
       if (!o || (e.title === o.title && e.lines.join('\n') === o.lines.join('\n'))) { delete edits[code]; changed = true; }
     });
     if (changed) store.set('edits', edits);
+    changed = false;
+    Object.keys(notes).forEach((code) => {
+      const s = SONGS.find((x) => x.code === code);
+      if (!s || notes[code] === (s.comment || '')) { delete notes[code]; changed = true; }
+    });
+    if (changed) store.set('notes', notes);
     const before = JSON.stringify(coll);
-    coll.custom = coll.custom.filter((c) => !CATS.includes(c));
+    coll.custom = coll.custom.filter((c) => !CATS.includes(c) && !baseCustom.includes(c));
+    coll.removed = coll.removed.filter((c) => baseCustom.includes(c));
     SONGS.forEach((s) => {
       const own = coll.songs[s.code];
-      if (own && JSON.stringify(own.slice().sort()) === JSON.stringify((s.categories || []).slice().sort())) delete coll.songs[s.code];
+      if (own && JSON.stringify(own.slice().sort()) === JSON.stringify((s.baseCats || []).slice().sort())) delete coll.songs[s.code];
     });
-    if (JSON.stringify(coll) !== before) saveColl();
-  })();
+    Object.keys(coll.songs).forEach((code) => { if (!SONGS.some((x) => x.code === code)) delete coll.songs[code]; });
+    if (JSON.stringify(coll) !== before) store.set('collections', coll);
+  }
+  reconcile();
+  document.body.classList.add('can-edit'); // cualquiera puede editar (se guarda en Drive)
   SONGS.forEach((s, i) => { s.index = i; load(s); applyCats(s); });
   state.list = listById(store.get('list', LISTS[0].id)).id;
   const listSongs = (id) => SONGS.filter((s) => s.list === (id || state.list));
@@ -341,6 +364,7 @@
       v = v.replace(/\s+$/, '');
       if (v === (s.comment || '')) delete notes[s.code]; else notes[s.code] = v;
       store.set('notes', notes);
+      localChanged();
       renderNote(s);
     };
     $('noteSave').onclick = () => save(ta.value);
@@ -356,6 +380,7 @@
   $('songNote').addEventListener('click', (e) => {
     // los clics en Guardar/Cancelar/Borrar no deben reabrir el editor
     if (!e.target.isConnected || e.target.closest('button, textarea') || $('songNote').classList.contains('editing')) return;
+    if (!document.body.classList.contains('can-edit')) return;
     editNote();
   });
 
@@ -383,8 +408,7 @@
     renderNote(s);
     $('songTags').innerHTML = s.categories.map((c) => `<span class="tag">${esc(catLabel(c))}</span>`).join('') +
       '<button class="tag tag-btn" id="collBtn" title="Añadir o quitar esta canción de colecciones">🏷 Colecciones</button>' +
-      (s.edited ? '<span class="tag edited" title="Modificada en este dispositivo">✎ Editada</span>' : '') +
-      (temp[s.code] ? '<span class="tag edited" title="Versión del emisor">↻ Versión del emisor</span>' : '');
+      (s.edited ? '<span class="tag edited" title="Se está guardando en Drive; si no hay conexión, se subirá en cuanto vuelva">⏳ Guardando en Drive…</span>' : '');
     document.title = s.title + ' · Cancionero';
     if (s.list !== state.list) setList(s.list, true);
     const ls = listSongs(s.list), li = ls.indexOf(s);
@@ -477,6 +501,7 @@
       if (title === o.title && lines.join('\n') === o.lines.join('\n')) delete edits[code];
       else edits[code] = { title, lines };
       store.set('edits', edits);
+      localChanged();
       load(s);
       if (state.current === s) showSong(code);
       renderList();
@@ -488,18 +513,19 @@
       if (!s) return;
       delete edits[code];
       store.set('edits', edits);
+      localChanged();
       load(s);
       if (state.current === s) showSong(code);
       renderList();
       notify('edit');
     },
     exportEdits: () => ({ formato: 'cancionero-meriba', version: 3, canciones: JSON.parse(JSON.stringify(edits)), colecciones: JSON.parse(JSON.stringify(coll)), comentarios: JSON.parse(JSON.stringify(notes)) }),
-    hasChanges: () => Object.keys(edits).length > 0 || coll.custom.length > 0 || Object.keys(coll.songs).length > 0 || Object.keys(notes).length > 0,
+    hasChanges: () => Object.keys(edits).length > 0 || coll.custom.length > 0 || coll.removed.length > 0 || Object.keys(coll.songs).length > 0 || Object.keys(notes).length > 0,
     importEdits(obj) {
       if (!obj || typeof obj !== 'object') return 0;
       let n = 0;
       if (obj.formato === 'cancionero-meriba' && obj.colecciones && Array.isArray(obj.colecciones.custom)) {
-        obj.colecciones.custom.forEach((c) => { c = cleanCat(c); if (c && !allCats().includes(c)) coll.custom.push(c); });
+        obj.colecciones.custom.forEach((c) => { c = cleanCat(c); if (c && !allCats().includes(c)) { coll.custom.push(c); coll.removed = coll.removed.filter((x) => x !== c); } });
         Object.entries(obj.colecciones.songs || {}).forEach(([code, list]) => {
           if (SONGS.some((x) => x.code === code) && Array.isArray(list)) { coll.songs[code] = list.filter((c) => allCats().includes(c)); n++; }
         });
@@ -510,6 +536,7 @@
           if (SONGS.some((x) => x.code === code) && typeof t === 'string') { notes[code] = t.slice(0, 2000); n++; }
         });
         store.set('notes', notes);
+        reconcile();
       }
       if (obj.formato === 'cancionero-meriba') obj = obj.canciones || {};
       Object.entries(obj).forEach(([code, v]) => {
@@ -519,6 +546,7 @@
         load(s); n++;
       });
       store.set('edits', edits);
+      localChanged();
       if (state.current) showSong(state.current.code);
       renderList();
       return n;
@@ -540,13 +568,15 @@
       name = cleanCat(name);
       if (!name) return { error: 'Escribe un nombre.' };
       if (allCats().some((c) => fold(c) === fold(name))) return { error: 'Ya existe una colección con ese nombre.' };
+      coll.removed = coll.removed.filter((c) => fold(c) !== fold(name));
       coll.custom.push(name); saveColl(); renderChips();
       return { name };
     },
     deleteCollection(name) {
       const i = coll.custom.indexOf(name);
-      if (i < 0) return;
-      coll.custom.splice(i, 1);
+      if (i < 0 && !baseCustom.includes(name)) return;
+      if (i >= 0) coll.custom.splice(i, 1);
+      if (baseCustom.includes(name) && !coll.removed.includes(name)) coll.removed.push(name);
       Object.keys(coll.songs).forEach((code) => { coll.songs[code] = coll.songs[code].filter((c) => c !== name); });
       saveColl(); SONGS.forEach(applyCats);
       if (state.category === name) state.category = null;
@@ -585,7 +615,63 @@
       const t = ls[ls.indexOf(state.current) + d];
       if (t) location.hash = '#' + t.code;
     },
-    onView(fn) { viewListeners.push(fn); }
+    onView(fn) { viewListeners.push(fn); },
+    // ---- Cancionero compartido (cloud.js) ----
+    onLocalChange(fn) { localListeners.push(fn); },
+    // Cambios hechos en este dispositivo que aún no están en el cancionero compartido
+    pending() {
+      const out = { addCats: coll.custom.slice(), delCats: coll.removed.slice(), songs: [], notes: [], cats: [] };
+      Object.entries(edits).forEach(([code, e]) => out.songs.push({ code, title: e.title, lines: e.lines.slice() }));
+      Object.entries(notes).forEach(([code, text]) => out.notes.push({ code, text }));
+      Object.entries(coll.songs).forEach(([code, list]) => out.cats.push({ code, categories: list.slice() }));
+      return out;
+    },
+    // El cancionero tal como viene de la fuente (sin cambios locales), para subirlo la primera vez
+    baseDoc() {
+      return {
+        lists: JSON.parse(JSON.stringify(LISTS)),
+        customCats: baseCustom.slice(),
+        songs: SONGS.map((s) => {
+          const o = { code: s.code, title: ORIG[s.code].title, lines: ORIG[s.code].lines.slice(), variants: s.variants || [], categories: (s.baseCats || []).slice(), list: s.list };
+          if (s.comment) o.comment = s.comment;
+          return o;
+        })
+      };
+    },
+    // Sustituye el cancionero base por una versión nueva (de Drive) sin recargar la página
+    loadDoc(doc) {
+      if (!doc || !Array.isArray(doc.songs) || !Array.isArray(doc.lists) || !doc.songs.length) return;
+      const cur = state.current;
+      const sig = (s) => s && JSON.stringify([s.title, s.lines, s.categories, s.comment || '', s.list, s.edited]);
+      const before = sig(cur);
+      LISTS.splice(0, LISTS.length, ...doc.lists);
+      CATS = LISTS.flatMap((l) => l.cats || []);
+      UPPER_CATS = listById('meriba').cats || [];
+      baseCustom = Array.isArray(doc.customCats) ? doc.customCats.slice() : [];
+      const byCode = {};
+      SONGS.forEach((s) => { byCode[s.code] = s; });
+      const next = doc.songs.filter((d) => d && typeof d.code === 'string' && Array.isArray(d.lines)).map((d) => {
+        const s = byCode[d.code] || { code: d.code };
+        s.variants = d.variants || [];
+        s.list = d.list || LISTS[0].id;
+        s.baseCats = (d.categories || []).slice();
+        if (d.comment) s.comment = d.comment; else delete s.comment;
+        ORIG[d.code] = { title: d.title, lines: d.lines.slice() };
+        return s;
+      });
+      SONGS.splice(0, SONGS.length, ...next);
+      reconcile();
+      SONGS.forEach((s, i) => { s.index = i; load(s); applyCats(s); });
+      if (state.category && !allCats().includes(state.category)) state.category = null;
+      renderLists(); renderChips(); renderList();
+      if (cur && !SONGS.includes(cur)) location.hash = '';
+      else if (cur && sig(cur) !== before) {
+        const y = window.scrollY, para = state.para;
+        showSong(cur.code);
+        if (para !== null && para < state.paraCount) selectPara(para, true); else window.scrollTo(0, y);
+      }
+    },
+    refreshTags() { if (state.current) { const y = window.scrollY; showSong(state.current.code); window.scrollTo(0, y); } }
   };
 
   // ---------- Eventos ----------

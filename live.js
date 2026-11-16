@@ -39,10 +39,7 @@
   // ---------- Emisor ----------
   function snapshot() {
     const s = window.App.getState();
-    const snap = { v: 2, seq: ++live.seq, song: s.song, shift: s.shift, para: s.para, ed: null };
-    // si el emisor ha editado la canción, se envía su versión para que los párrafos coincidan
-    const content = s.song && window.App.songContent ? window.App.songContent(s.song) : null;
-    if (content && JSON.stringify(content).length < 3300) snap.ed = content;
+    const snap = { v: 2, seq: ++live.seq, song: s.song, shift: s.shift, para: s.para, ed: null, rv: window.Cloud ? window.Cloud.rev() : 0 };
     return snap;
   }
   function send() {
@@ -61,6 +58,8 @@
     if (!d || typeof d !== 'object' || d.v !== 2 || typeof d.song !== 'string') return;
     if (!live.following) setFollowing(msg.peer);
     if (msg.peer !== live.following) return;
+    // el emisor tiene una versión más nueva del cancionero compartido
+    if (window.Cloud && Number.isInteger(d.rv)) window.Cloud.behind(d.rv);
     const prevSong = live.last && live.last.song;
     live.last = { song: d.song, shift: d.shift, para: Number.isInteger(d.para) ? d.para : null, ed: d.ed || null };
     if (live.paused) { render(); return; }
@@ -71,7 +70,6 @@
     const d = live.last;
     if (!d) return;
     live.applying = true;
-    if (d.song && window.App.setTemp) window.App.setTemp(d.song, d.ed);
     window.App.apply({ song: d.song, shift: d.shift, para: d.para }, { noPara: !live.followScroll });
     setTimeout(() => { live.applying = false; }, 200);
   }
