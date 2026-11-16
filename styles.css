@@ -605,17 +605,3 @@ body.sb-dragging * { cursor: col-resize !important; }
   body.screen-mode .sidebar { display: none; }
 }
 
-/* Micrófono: seguir la canción de oído */
-.tb.mic-btn { color: var(--muted); }
-.tb.mic-btn[aria-pressed="true"] { background: #c62828; border-color: #c62828; color: #fff; animation: micpulse 1.6s ease-in-out infinite; }
-@keyframes micpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(198,40,40,.45); } 50% { box-shadow: 0 0 0 7px rgba(198,40,40,0); } }
-body.receiving:not(.lyrics-op) #micBtn { display: none; }
-.mic-toast {
-  position: fixed; right: 16px; bottom: calc(70px + env(safe-area-inset-bottom)); z-index: 25; max-width: min(360px, calc(100vw - 32px));
-  padding: 7px 12px; border-radius: 12px; background: rgba(30,30,30,.88); color: #fff; font-size: 13px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
-}
-.mic-toast.warn { background: #c62828; white-space: normal; }
-.mic-toast[hidden] { display: none; }
-body.screen-mode .mic-toast { z-index: 75; opacity: .7; }
-@media (max-width: 820px) { .mic-toast { bottom: calc(var(--peek) + 60px); right: 10px; } }
