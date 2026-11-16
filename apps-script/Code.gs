@@ -135,6 +135,16 @@ function apply_(doc, r) {
       for (var k = 0; k < doc.songs.length; k++) if (doc.songs[k].list === song.list) at = k;
       if (at < 0) doc.songs.push(song); else doc.songs.splice(at + 1, 0, song);
       return null;
+    case 'lists':
+      // reordenar las listas de reproducción: r.order = [id, id, ...]
+      if (!Array.isArray(r.order)) return 'orden';
+      var byId = {};
+      doc.lists.forEach(function (l) { byId[l.id] = l; });
+      var nextL = [];
+      r.order.forEach(function (id) { if (byId[id]) { nextL.push(byId[id]); delete byId[id]; } });
+      Object.keys(byId).forEach(function (id) { nextL.push(byId[id]); });
+      doc.lists = nextL;
+      return null;
     case 'addCat':
       var n = str_(r.name, 40).trim();
       if (!n) return 'nombre';
