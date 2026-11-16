@@ -314,7 +314,13 @@
     bar.id = 'liveBar'; bar.className = 'live-bar'; bar.hidden = true;
     bar.innerHTML = '<span class="dot"></span><span id="liveBarText"></span><button id="liveBarBtn" hidden>Volver al directo</button>';
     bar.setAttribute('role', 'status');
-    bar.addEventListener('click', (e) => { if (bar.classList.contains('mini')) { e.stopPropagation(); expandBar(); } });
+    bar.addEventListener('click', (e) => {
+      if (!bar.classList.contains('mini')) return;
+      e.stopPropagation();
+      // receptor siguiendo: al pulsar el punto se pausa y aparece «En pausa · Volver al directo»
+      if (live.mode === 'receptor' && !live.paused && live.last) { live.paused = true; render(); expandBar(); }
+      else expandBar();
+    });
     document.body.appendChild(bar);
 
     btn.onclick = () => {

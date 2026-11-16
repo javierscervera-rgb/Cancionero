@@ -58,7 +58,7 @@ En la versión publicada en Claude aparece el botón **En directo**:
 - **Líder**: comparte tu canción, el tono y el párrafo que marcas (al tocar un párrafo se centra en la pantalla).
 - **Letras**: sigue la canción y el tono del líder y solo puede pasar los párrafos; lo que pasa lo ven los receptores y también el líder. Si intenta cambiar de canción, vuelve a la del líder.
 - **Recibir**: tu pantalla sigue al emisor, también en el tono (el receptor no ve los controles de tono). Si navegas por tu cuenta, el seguimiento se pausa y aparece "Volver al directo".
-- El aviso de estado se ve completo 10 s cada vez que cambia y luego queda como un punto rojo; si no estás siguiendo al emisor, es un aro rojo sin relleno.
+- El aviso de estado se ve completo 10 s cada vez que cambia y luego queda como un punto rojo; si no estás siguiendo al emisor, es un aro rojo sin relleno. Si recibes y pulsas el punto, se pausa el seguimiento y aparece «En pausa · Volver al directo».
 - Si hay varios emisores, cada receptor elige a quién seguir.
 
 Transporte:
