@@ -498,3 +498,5 @@ body.receiving .toolbar .tb-sep:first-of-type { display: none; }
 body:not(.can-edit) #editBtn, body:not(.can-edit) #noteBtn, body:not(.can-edit) #collBtn, body:not(.can-edit) .chip.add { display: none !important; }
 .lists-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .editors-btn { margin: 0; font-size: 12px; text-transform: none; letter-spacing: 0; }
+.seg.seg4 { grid-template-columns: repeat(4, 1fr); }
+.seg.seg4 button { font-size: 12.5px; padding: 9px 2px; }

@@ -1,11 +1,14 @@
-// Modo "En directo": un emisor comparte lo que ve (canción, tono y desplazamiento)
-// y los receptores lo siguen en tiempo real.
+// Modo "En directo": hay dos tipos de emisor y los receptores los siguen en tiempo real.
+//   - Líder (role "emisor"): decide la canción, el tono y el párrafo.
+//   - Letras (role "letras"): sigue la canción y el tono del líder y solo pasa los párrafos.
 //
 // Protocolo (capacidad `room` de la página publicada en Claude):
-//   presence: { role: "emisor" | "receptor", name, follow: { of: <peer del emisor> } }
-//   evento "sync" (solo emisores): { v: 2, seq, song, shift, para }
+//   presence: { role: "emisor" | "letras" | "receptor", name, follow: { of: <peer del líder> } }
+//   evento "sync" del líder:  { v: 2, seq, song, shift, para, pt, rv }
 //     - estado ABSOLUTO; se reenvía en cada cambio, cuando entra alguien nuevo y cada 3 s
-//     - para: índice del párrafo seleccionado por el emisor (se centra en pantalla) o null
+//     - para: índice del párrafo marcado (se centra en pantalla) o null; pt: cuándo cambió
+//   evento "sync" de Letras: { v: 2, kind: "para", song, para, pt }
+//     - gana el párrafo con el pt más reciente (del líder o de Letras) dentro de la misma canción
 // Transporte:
 //   - Dentro de Claude: capacidad `room` de la plataforma.
 //   - Fuera de Claude (GitHub Pages): broker MQTT público por WebSocket seguro, sin servidor
@@ -23,11 +26,12 @@
 
   const live = {
     room: null,
-    mode: 'off',            // off | emisor | receptor
+    mode: 'off',            // off | emisor (líder) | letras | receptor
     name: store.get('liveName', ''),
     followScroll: store.get('liveScroll', true),
     myPeer: null,
-    following: null,        // peer del emisor que sigo
+    following: null,        // peer del líder que sigo (receptor y Letras)
+    paraT: 0,               // líder: cuándo cambió el párrafo por última vez
     paused: false,
     last: null,             // último estado recibido del emisor seguido
     seq: 0,
@@ -39,11 +43,13 @@
   // ---------- Emisor ----------
   function snapshot() {
     const s = window.App.getState();
-    const snap = { v: 2, seq: ++live.seq, song: s.song, shift: s.shift, para: s.para, ed: null, rv: window.Cloud ? window.Cloud.rev() : 0 };
-    return snap;
+    if (live.mode === 'letras') return { v: 2, kind: 'para', seq: ++live.seq, song: live.last ? live.last.song : '', para: live.last ? live.last.para : null, pt: live.last ? live.last.pt : 0 };
+    return { v: 2, seq: ++live.seq, song: s.song, shift: s.shift, para: s.para, pt: live.paraT, rv: window.Cloud ? window.Cloud.rev() : 0 };
   }
+  const followerMode = () => live.mode === 'receptor' || live.mode === 'letras';
   function send() {
-    if (live.mode !== 'emisor' || !live.room) return;
+    if ((live.mode !== 'emisor' && live.mode !== 'letras') || !live.room) return;
+    if (live.mode === 'letras' && !live.last) return;
     live.room.emit('sync', snapshot()).catch((e) => {
       if (e && e.code === 'not_permitted') {
         setMode('receptor');
@@ -53,38 +59,79 @@
   }
   // ---------- Receptor ----------
   function onSync(msg) {
-    if (live.mode !== 'receptor' || msg.sameTab) return;
+    if (msg.sameTab) return;
     const d = msg.data;
     if (!d || typeof d !== 'object' || d.v !== 2 || typeof d.song !== 'string') return;
+    const para = Number.isInteger(d.para) ? d.para : null;
+    const pt = typeof d.pt === 'number' ? d.pt : 0;
+    // ---- Letras ha pasado un párrafo ----
+    if (d.kind === 'para') {
+      if (!isRole(msg.peer, 'letras')) return;
+      if (live.mode === 'emisor') {
+        // el líder también lo ve, y lo incluye en su estado para todos
+        const s = window.App.getState();
+        if (d.song === s.song && pt > live.paraT && para !== s.para) {
+          live.paraT = pt;
+          live.applying = true;
+          window.App.apply({ song: d.song, para });
+          setTimeout(() => { live.applying = false; }, 200);
+          setTimeout(send, 250);
+        }
+      } else if (followerMode() && live.last && d.song === live.last.song && pt > (live.last.pt || 0)) {
+        live.last.para = para; live.last.pt = pt;
+        if (!live.paused) applyLast();
+        render();
+      }
+      return;
+    }
+    // ---- Estado del líder ----
+    if (!followerMode()) return;
     if (!live.following) setFollowing(msg.peer);
     if (msg.peer !== live.following) return;
-    // el emisor tiene una versión más nueva del cancionero compartido
+    // el líder tiene una versión más nueva del cancionero compartido
     if (window.Cloud && Number.isInteger(d.rv)) window.Cloud.behind(d.rv);
-    const prevSong = live.last && live.last.song;
-    live.last = { song: d.song, shift: d.shift, para: Number.isInteger(d.para) ? d.para : null, ed: d.ed || null };
+    const prev = live.last;
+    live.last = { song: d.song, shift: d.shift, para, pt };
+    // si Letras pasó un párrafo más reciente de esta canción, se mantiene
+    if (prev && prev.song === d.song && (prev.pt || 0) > pt) { live.last.para = prev.para; live.last.pt = prev.pt; }
     if (live.paused) { render(); return; }
     applyLast();
     render();
+  }
+  function isRole(peer, role) {
+    const p = peersList().find((x) => x.peer === peer);
+    return !!(p && p.presence && p.presence.role === role);
   }
   function applyLast() {
     const d = live.last;
     if (!d) return;
     live.applying = true;
-    window.App.apply({ song: d.song, shift: d.shift, para: d.para }, { noPara: !live.followScroll });
+    window.App.apply({ song: d.song, shift: d.shift, para: d.para }, { noPara: live.mode === 'receptor' && !live.followScroll });
     setTimeout(() => { live.applying = false; }, 200);
   }
   function setFollowing(peer) {
     live.following = peer;
     live.paused = false;
-    if (live.room && live.mode === 'receptor') {
+    if (live.room && followerMode()) {
       live.room.presence({ follow: peer ? { of: peer } : null }).catch(() => {});
     }
   }
 
   // Cambios hechos por la propia persona
-  window.App.onChange(() => {
-    if (live.mode === 'emisor') send();
-    else if (live.mode === 'receptor' && !live.applying && live.last && !live.paused) {
+  window.App.onChange((why) => {
+    if (live.mode === 'emisor') {
+      if (!live.applying && (why === 'para' || why === 'song')) live.paraT = Date.now();
+      send();
+    } else if (live.mode === 'letras' && !live.applying && live.last) {
+      const s = window.App.getState();
+      if (s.song === live.last.song && s.shift === live.last.shift) {
+        // pasar párrafo: es lo único que puede hacer Letras
+        if (s.para !== live.last.para) { live.last.para = s.para; live.last.pt = Date.now(); send(); }
+      } else {
+        flash('Con el rol Letras solo puedes pasar los párrafos. La canción y el tono los decide el líder.');
+        applyLast();
+      }
+    } else if (live.mode === 'receptor' && !live.applying && live.last && !live.paused) {
       const s = window.App.getState();
       if (s.song !== live.last.song || s.shift !== live.last.shift ||
           (live.followScroll && s.para !== live.last.para)) { live.paused = true; render(); }
@@ -114,7 +161,7 @@
       if (!cleanRoom(live.sala)) { flash('Escribe primero un código de sala.'); $('liveSala').focus(); m = 'off'; }
       else connectP2P();
     }
-    lockView(m === 'emisor');
+    lockView(m === 'emisor' || m === 'letras');
     live.mode = m;
     live.paused = false;
     live.last = null;
@@ -126,13 +173,15 @@
       live.room.presence({ role: null, follow: null, name: null }).catch(() => {});
     } else if (m === 'emisor') {
       live.following = null;
+      live.paraT = Date.now();
       live.room.presence({ role: 'emisor', name: cleanName(live.name), follow: null }).catch(() => {});
       send();
       live.heartbeat = setInterval(send, 3000);
     } else {
       if (live.room && live.room.emit && !IN_CLAUDE) live.room.emit('sync', null);
       live.following = pickEmitter();
-      live.room.presence({ role: 'receptor', name: cleanName(live.name), follow: live.following ? { of: live.following } : null }).catch(() => {});
+      live.room.presence({ role: m, name: cleanName(live.name), follow: live.following ? { of: live.following } : null }).catch(() => {});
+      if (m === 'letras') live.heartbeat = setInterval(send, 3000);
     }
     render();
   }
@@ -145,22 +194,24 @@
   function pickEmitter() { const e = emitters(); return e.length ? e[0].peer : null; }
   function peerLabel(p, i) {
     const n = p && p.presence && typeof p.presence.name === 'string' ? cleanName(p.presence.name) : '';
-    return n || ('Emisor ' + (i + 1)) + (p && p.isMe ? ' (tú, otra pestaña)' : '');
+    return n || ('Líder ' + (i + 1)) + (p && p.isMe ? ' (tú, otra pestaña)' : '');
   }
 
   // ---------- Interfaz ----------
   function render() {
     const btn = $('liveBtn'), panel = $('livePanel'), bar = $('liveBar');
     const ems = emitters();
-    const receivers = peersList().filter((p) => !p.sameTab && p.presence && p.presence.role === 'receptor' &&
+    const followers = peersList().filter((p) => !p.sameTab && p.presence && (p.presence.role === 'receptor' || p.presence.role === 'letras') &&
       p.presence.follow && p.presence.follow.of === live.myPeer);
+    const receivers = followers.filter((p) => p.presence.role === 'receptor');
+    const lyricists = followers.filter((p) => p.presence.role === 'letras');
 
     btn.classList.toggle('on', live.mode !== 'off');
     btn.querySelector('.lbl').textContent =
-      live.mode === 'emisor' ? 'Emitiendo' : live.mode === 'receptor' ? 'Recibiendo' : 'En directo';
+      live.mode === 'emisor' ? 'Líder' : live.mode === 'letras' ? 'Letras' : live.mode === 'receptor' ? 'Recibiendo' : 'En directo';
 
     panel.querySelectorAll('[data-mode]').forEach((b) => b.classList.toggle('on', b.dataset.mode === live.mode));
-    $('liveFollowRow').hidden = live.mode !== 'receptor';
+    $('liveFollowRow').hidden = !followerMode();
     $('liveScrollRow').hidden = live.mode !== 'receptor';
 
     const sel = $('liveFollow');
@@ -174,33 +225,38 @@
     sel.disabled = ems.length < 2;
 
     let status = '';
-    if (!IN_CLAUDE && live.mode === 'off') status = 'Elige una sala y pulsa Emitir o Recibir. Todos deben usar el mismo código.';
+    const nR = receivers.length === 1 ? '1 receptor' : receivers.length + ' receptores';
+    if (!IN_CLAUDE && live.mode === 'off') status = 'Elige una sala y pulsa Líder, Letras o Recibir. Todos deben usar el mismo código.';
     else if (!live.connected) status = 'Conectando…';
-    else if (live.mode === 'off') status = ems.length ? (ems.length === 1 ? 'Hay 1 persona emitiendo.' : `Hay ${ems.length} personas emitiendo.`) : 'Nadie está emitiendo ahora.';
-    else if (live.mode === 'emisor') status = receivers.length === 1 ? '1 persona sigue tu pantalla.' : `${receivers.length} personas siguen tu pantalla.`;
-    else if (!ems.length) status = IN_CLAUDE ? 'Esperando a que alguien emita…' : 'Esperando a que alguien emita en la sala «' + cleanRoom(live.sala) + '»…';
-    else status = live.paused ? 'En pausa: estás navegando por tu cuenta.' : 'Sigues la pantalla del emisor.';
+    else if (live.mode === 'off') status = ems.length ? (ems.length === 1 ? 'Hay 1 líder emitiendo.' : `Hay ${ems.length} líderes emitiendo.`) : 'Nadie está emitiendo ahora.';
+    else if (live.mode === 'emisor') status = 'Eres el líder: ' + nR + (lyricists.length ? ' y ' + lyricists.length + ' en Letras' : '') + '.';
+    else if (!ems.length) status = IN_CLAUDE ? 'Esperando a que haya un líder…' : 'Esperando a que haya un líder en la sala «' + cleanRoom(live.sala) + '»…';
+    else if (live.mode === 'letras') status = 'Letras: sigues la canción y el tono del líder y pasas los párrafos para todos.';
+    else status = live.paused ? 'En pausa: estás navegando por tu cuenta.' : 'Sigues al líder.';
     $('liveStatus').textContent = status;
 
     // barra inferior: completa 10 s cada vez que cambia su texto; luego se reduce al punto
-    if (live.mode === 'receptor') {
+    if (followerMode()) {
       bar.hidden = false;
       const idx = ems.findIndex((p) => p.peer === live.following);
       const who = idx >= 0 ? peerLabel(ems[idx], idx) : null;
-      $('liveBarText').textContent = !who ? 'Esperando emisor…' : live.paused ? 'En pausa · ' + who : 'Siguiendo a ' + who;
-      $('liveBarBtn').hidden = !live.paused || !live.last;
+      $('liveBarText').textContent = live.mode === 'letras'
+        ? (who ? 'Letras · con ' + who : 'Letras · esperando líder…')
+        : (!who ? 'Esperando líder…' : live.paused ? 'En pausa · ' + who : 'Siguiendo a ' + who);
+      $('liveBarBtn').hidden = live.mode === 'letras' || !live.paused || !live.last;
     } else if (live.mode === 'emisor') {
       bar.hidden = false;
-      $('liveBarText').textContent = 'Emitiendo · ' + (receivers.length === 1 ? '1 receptor' : receivers.length + ' receptores');
+      $('liveBarText').textContent = 'Líder · ' + nR + (lyricists.length ? ' · ' + lyricists.length + ' Letras' : '');
       $('liveBarBtn').hidden = true;
     } else bar.hidden = true;
     const barKey = bar.hidden ? '' : $('liveBarText').textContent + '|' + $('liveBarBtn').hidden;
     if (barKey !== live.barKey) { live.barKey = barKey; if (barKey) expandBar(); }
     // aro rojo sin relleno cuando el receptor no está siguiendo a nadie (en pausa o sin emisor)
-    const notFollowing = live.mode === 'receptor' && (live.paused || !ems.some((p) => p.peer === live.following));
+    const notFollowing = followerMode() && (live.paused || !ems.some((p) => p.peer === live.following));
     bar.classList.toggle('off', notFollowing);
     document.body.classList.toggle('live-on', live.mode !== 'off');
-    document.body.classList.toggle('receiving', live.mode === 'receptor'); // el tono lo decide el emisor
+    document.body.classList.toggle('receiving', followerMode()); // el tono lo decide el líder
+    document.body.classList.toggle('lyrics-op', live.mode === 'letras');
   }
 
   function expandBar() {
@@ -229,10 +285,12 @@
     panel.id = 'livePanel'; panel.className = 'live-panel'; panel.hidden = true;
     panel.innerHTML = `
       <h3>Ver en directo</h3>
-      <p class="muted small">Quien emite comparte su canción, el tono y el párrafo que marca. Quien recibe lo ve igual en su pantalla.</p>
-      <div class="seg" role="group" aria-label="Modo">
+      <p class="muted small"><b>Líder</b>: elige la canción, el tono y el párrafo. <b>Letras</b>: sigue al líder y solo pasa los párrafos.
+        <b>Recibir</b>: tu pantalla muestra lo que marcan.</p>
+      <div class="seg seg4" role="group" aria-label="Modo">
         <button data-mode="off">Desactivado</button>
-        <button data-mode="emisor">Emitir</button>
+        <button data-mode="emisor">Líder</button>
+        <button data-mode="letras">Letras</button>
         <button data-mode="receptor">Recibir</button>
       </div>
       <div class="sala" id="liveSalaRow" hidden>
@@ -244,10 +302,10 @@
       <label class="field">Tu nombre (opcional)
         <input id="liveName" maxlength="40" placeholder="p. ej. Guitarra 1" autocomplete="off">
       </label>
-      <label class="field" id="liveFollowRow" hidden>Seguir a
+      <label class="field" id="liveFollowRow" hidden>Líder al que sigues
         <select id="liveFollow"></select>
       </label>
-      <label class="toggle" id="liveScrollRow" hidden><input type="checkbox" id="liveScroll"> Centrar el párrafo que marque el emisor</label>
+      <label class="toggle" id="liveScrollRow" hidden><input type="checkbox" id="liveScroll"> Centrar el párrafo que marquen</label>
       <p class="live-status" id="liveStatus"></p>
       <p class="live-flash" id="liveFlash" hidden></p>`;
     document.body.appendChild(panel);
@@ -311,8 +369,8 @@
     room.onPeers((ch) => {
       const me = ch.peers.find((p) => p.sameTab);
       if (me) live.myPeer = me.peer;
-      if (live.mode === 'emisor' && ch.joined.some((p) => !p.sameTab)) send();
-      if (live.mode === 'receptor') {
+      if ((live.mode === 'emisor' || live.mode === 'letras') && ch.joined.some((p) => !p.sameTab)) send();
+      if (followerMode()) {
         if (live.following && ch.left.some((p) => p.peer === live.following)) { setFollowing(pickEmitter()); live.last = null; }
         else if (!live.following) { const e = pickEmitter(); if (e) setFollowing(e); }
       }

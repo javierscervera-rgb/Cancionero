@@ -40,7 +40,6 @@ Botón **✎ Editar** junto al título. Dos pestañas:
 
 - Los acordes se editan en el tono en que estás viendo la canción; al guardar se pasan al tono original.
 - Los cambios se guardan **en este dispositivo** (se marcan como "✎ Editada"). Se pueden **exportar** a un archivo `.json` e **importar** en otro dispositivo. Para que sean para todos, hay que incorporarlos a `songs.js` en el repositorio.
-- En el directo, si el emisor ha editado la canción, los receptores ven temporalmente su versión ("↻ Versión del emisor") para que los párrafos coincidan.
 
 ## Modo Pantalla (proyección)
 
@@ -56,7 +55,8 @@ Botón **Pantalla** en la barra de la derecha: fondo negro y solo la letra (sin 
 
 En la versión publicada en Claude aparece el botón **En directo**:
 
-- **Emitir**: comparte tu canción, el tono y el párrafo que marcas (al tocar un párrafo se centra en la pantalla).
+- **Líder**: comparte tu canción, el tono y el párrafo que marcas (al tocar un párrafo se centra en la pantalla).
+- **Letras**: sigue la canción y el tono del líder y solo puede pasar los párrafos; lo que pasa lo ven los receptores y también el líder. Si intenta cambiar de canción, vuelve a la del líder.
 - **Recibir**: tu pantalla sigue al emisor, también en el tono (el receptor no ve los controles de tono). Si navegas por tu cuenta, el seguimiento se pausa y aparece "Volver al directo".
 - El aviso de estado se ve completo 10 s cada vez que cambia y luego queda como un punto rojo; si no estás siguiendo al emisor, es un aro rojo sin relleno.
 - Si hay varios emisores, cada receptor elige a quién seguir.
@@ -66,7 +66,7 @@ Transporte:
 - **En Claude**: la capacidad `room` de la plataforma (solo emite quien tiene permiso de colaborador).
 - **En GitHub Pages**: sin servidor propio, a través de un broker MQTT público por WebSocket seguro (`broker.emqx.io`, con `broker.hivemq.com` de reserva). Funciona en cualquier red donde se pueda navegar. Todos escriben el mismo **código de sala** (o abren un enlace `?sala=codigo`). El estado del emisor queda retenido en el broker, así que quien entra tarde lo recibe al instante. Los mensajes del broker público no van cifrados de extremo a extremo (solo contienen el código de canción, el tono y la posición). Cualquiera que conozca el código puede emitir; cada receptor elige a quién sigue.
 
-Protocolo: cada participante publica `presence { role, name, follow }` y el emisor envía en el tema `sync` el estado absoluto `{ v: 2, seq, song, shift, para }` en cada cambio, cuando entra alguien y cada 3 s. Sin internet el resto de la web funciona igual.
+Protocolo: cada participante publica `presence { role: emisor|letras|receptor, name, follow }`. El líder envía en el tema `sync` el estado absoluto `{ v: 2, seq, song, shift, para, pt, rv }` en cada cambio, cuando entra alguien y cada 3 s; Letras envía `{ v: 2, kind: "para", song, para, pt }`. Gana el párrafo con el `pt` más reciente dentro de la misma canción. Sin internet el resto de la web funciona igual.
 
 ## Uso
 
