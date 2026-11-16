@@ -3,6 +3,8 @@
 (function () {
   'use strict';
   window.CLOUD_URL = 'https://script.google.com/macros/s/AKfycbyqMIX5rAA4rqAb_TrbIkUfMqlX8zwH5KMLIw3pSF12DIj329Md5vkbMCjzA35iP_MsCQ/exec';
+  // canciones incluidas en la web: las que aún no estén en Drive se suben (cloud.js)
+  try { window.BUNDLE_SONGS = JSON.parse(JSON.stringify(window.SONGS || [])); } catch (e) { window.BUNDLE_SONGS = []; }
   let doc = null;
   try { doc = JSON.parse(localStorage.getItem('cm:cloud')); } catch (e) { doc = null; }
   if (doc && Array.isArray(doc.songs) && doc.songs.length && Array.isArray(doc.lists) && doc.lists.length) {

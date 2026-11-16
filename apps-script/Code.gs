@@ -125,6 +125,16 @@ function apply_(doc, r) {
       if (!s || !cs) return 'cancion';
       s.categories = cs;
       return null;
+    case 'addSong':
+      var ns = r.song || {};
+      var nl = lines_(ns.lines);
+      if (typeof ns.code !== 'string' || !/^[A-Za-z0-9_-]{1,12}$/.test(ns.code) || !nl || typeof ns.title !== 'string' || !ns.title.trim()) return 'cancion';
+      if (find_(doc, ns.code)) return 'existe';
+      var song = { code: ns.code, title: ns.title.slice(0, 200), lines: nl, variants: [], categories: cats_(ns.categories) || [], list: str_(ns.list, 40) || doc.lists[0].id };
+      var at = -1;
+      for (var k = 0; k < doc.songs.length; k++) if (doc.songs[k].list === song.list) at = k;
+      if (at < 0) doc.songs.push(song); else doc.songs.splice(at + 1, 0, song);
+      return null;
     case 'addCat':
       var n = str_(r.name, 40).trim();
       if (!n) return 'nombre';

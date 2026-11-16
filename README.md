@@ -91,4 +91,4 @@ Solo hay una versión del cancionero: la guardada en Google Drive (cuenta de la 
 - Antes del primer cambio de cada día se guarda una copia de seguridad en `Cancionero/Copias de seguridad/cancionero-AAAA-MM-DD.json`.
 - El botón **☁ Drive** muestra el estado, los últimos cambios y permite poner tu nombre para el registro.
 - Para volver a una copia de seguridad, hay que sustituir el contenido de `cancionero.json` y subir el número de versión (`rev`), también en la propiedad `REV` del script, para que todos los dispositivos se actualicen.
-- Los archivos `songs*.js` del repositorio solo se usan la primera vez que se abre la web sin conexión.
+- Los archivos `songs*.js` del repositorio sirven de reserva sin conexión. Si se añade una canción nueva a esos archivos, la web la sube sola a Drive la primera vez que alguien la abre.

@@ -48,6 +48,14 @@
       case 'song': s = find(r.code); if (s) { s.title = r.title; s.lines = r.lines.slice(); } break;
       case 'note': s = find(r.code); if (s) { if (r.text) s.comment = r.text; else delete s.comment; } break;
       case 'cats': s = find(r.code); if (s) s.categories = r.categories.slice(); break;
+      case 'addSong': {
+        if (find(r.song.code)) break;
+        let at = -1;
+        doc.songs.forEach((x, k) => { if (x.list === r.song.list) at = k; });
+        const ns = { code: r.song.code, title: r.song.title, lines: r.song.lines.slice(), variants: [], categories: r.song.categories.slice(), list: r.song.list };
+        if (at < 0) doc.songs.push(ns); else doc.songs.splice(at + 1, 0, ns);
+        break;
+      }
       case 'addCat': doc.customCats = doc.customCats || []; if (!doc.customCats.includes(r.name)) doc.customCats.push(r.name); break;
       case 'delCat':
         doc.customCats = (doc.customCats || []).filter((c) => c !== r.name);
@@ -90,6 +98,10 @@
     if (st.busy) { st.again = true; return; }
     const p = A.pending();
     const ops = [];
+    // canciones nuevas incluidas en la web que todavía no están en Drive
+    const have = new Set(st.doc.songs.map((x) => x.code));
+    (window.BUNDLE_SONGS || []).filter((x) => x && x.code && !have.has(x.code)).forEach((x) => ops.push({ op: 'addSong', code: x.code,
+      song: { code: x.code, title: x.title, lines: x.lines, categories: x.categories || [], list: x.list || '' } }));
     p.addCats.forEach((name) => ops.push({ op: 'addCat', name }));
     p.songs.forEach((x) => ops.push({ op: 'song', code: x.code, title: x.title, lines: x.lines }));
     p.notes.forEach((x) => ops.push({ op: 'note', code: x.code, text: x.text }));
@@ -102,6 +114,7 @@
     try {
       for (const op of ops) {
         const r = await post(Object.assign({ by: st.by }, op));
+        if (!r.ok && r.error === 'existe') { stale = true; continue; } // otro dispositivo la subió antes
         if (!r.ok) { handleError(r.error); failed = true; break; }
         applyOp(st.doc, op);
         if (r.rev !== rev() + 1) stale = true; // alguien más ha guardado entretanto
