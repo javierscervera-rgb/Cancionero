@@ -141,6 +141,7 @@
   // Al tocar una pastilla: filtra el índice; en móvil, si estás leyendo una canción, vuelve al índice
   function pickCategory(c) {
     state.category = c;
+    state.letter = null;
     renderChips();
     renderList();
     if (state.current && matchMedia('(max-width: 820px)').matches) location.hash = '';
@@ -214,12 +215,17 @@
   }
   function setLetter(l) {
     state.letter = l && l !== state.letter ? l : null;
+    if (state.letter) {
+      // por letra: todas las canciones de la lista, sin colección ni búsqueda
+      state.category = null; state.query = ''; $('search').value = '';
+      renderChips();
+    }
     $('abcGrid').hidden = true; $('abcBtn').setAttribute('aria-expanded', 'false');
     renderList();
     $('sidebar').scrollTop = 0;
   }
   function renderAbc() {
-    const have = new Set(filtered(true).map((s) => initialOf(s.title)));
+    const have = new Set(listSongs(state.list).map((s) => initialOf(s.title)));
     $('abcGrid').innerHTML = ABC.map((l) => `<button class="abc-cell${l === state.letter ? ' on' : ''}" data-l="${l}"${have.has(l) || l === state.letter ? '' : ' disabled'}>${l}</button>`).join('');
     $('abcGrid').querySelectorAll('[data-l]').forEach((b) => { b.onclick = () => setLetter(b.dataset.l); });
     $('abcBtn').classList.toggle('on', !!state.letter);
@@ -245,6 +251,41 @@
     $('abcBtn').setAttribute('aria-expanded', String(open));
   };
   applyListFont();
+
+  // ---------- Ancho de la lista de canciones (arrastrando el separador) ----------
+  const SBW = 320;
+  const clampW = (w) => Math.round(Math.max(220, Math.min(w, Math.min(720, window.innerWidth * 0.6))));
+  function setSbw(w, save) {
+    w = clampW(w);
+    document.documentElement.style.setProperty('--sbw', w + 'px');
+    $('sbResize').setAttribute('aria-valuenow', String(w));
+    if (save) store.set('sbw', w);
+  }
+  setSbw(store.get('sbw', SBW), false);
+  (function () {
+    const h = $('sbResize');
+    let x0 = 0, w0 = 0, dragging = false;
+    h.addEventListener('pointerdown', (e) => {
+      dragging = true; x0 = e.clientX; w0 = $('sidebar').getBoundingClientRect().width;
+      h.setPointerCapture(e.pointerId); h.classList.add('drag'); document.body.classList.add('sb-dragging');
+      e.preventDefault();
+    });
+    h.addEventListener('pointermove', (e) => { if (dragging) setSbw(w0 + e.clientX - x0, false); });
+    const end = () => {
+      if (!dragging) return;
+      dragging = false; h.classList.remove('drag'); document.body.classList.remove('sb-dragging');
+      setSbw($('sidebar').getBoundingClientRect().width, true);
+    };
+    h.addEventListener('pointerup', end);
+    h.addEventListener('pointercancel', end);
+    h.addEventListener('dblclick', () => setSbw(SBW, true));
+    h.addEventListener('keydown', (e) => {
+      const w = $('sidebar').getBoundingClientRect().width;
+      if (e.key === 'ArrowLeft') { setSbw(w - 20, true); e.preventDefault(); }
+      else if (e.key === 'ArrowRight') { setSbw(w + 20, true); e.preventDefault(); }
+    });
+    window.addEventListener('resize', () => setSbw(store.get('sbw', SBW), false));
+  })();
 
   function renderList() {
     renderAbc();

@@ -64,7 +64,7 @@ button, select, input { font: inherit; color: inherit; }
 .chipbar .chip.on { background: var(--accent); color: #fff; }
 
 /* Layout */
-.layout { display: grid; grid-template-columns: 320px 1fr; min-height: calc(100vh - var(--top-h)); }
+.layout { position: relative; display: grid; grid-template-columns: var(--sbw, 320px) 1fr; min-height: calc(100vh - var(--top-h)); }
 .sidebar {
   position: sticky; top: var(--top-h); height: calc(100vh - var(--top-h)); overflow-y: auto;
   border-right: 1px solid var(--line); background: var(--panel); padding: 14px 10px 30px;
@@ -543,3 +543,23 @@ body.receiving:not(.lyrics-op) #scrBlank { display: none; }
 .song-list a:hover { border-color: var(--accent); }
 .song-list a.active { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 4px 0 0 var(--accent); }
 .abc-grid { max-width: none; }
+
+/* Separador para cambiar el ancho de la lista */
+.sb-resize {
+  position: absolute; top: 0; bottom: 0; left: calc(var(--sbw, 320px) - 6px); width: 12px; z-index: 6;
+  cursor: col-resize; touch-action: none; outline: none;
+}
+.sb-resize::before { content: ''; position: absolute; top: 0; bottom: 0; left: 5px; width: 2px; background: transparent; transition: background .15s; }
+.sb-resize:hover::before, .sb-resize.drag::before, .sb-resize:focus-visible::before { background: var(--accent); }
+.sb-grip {
+  position: sticky; top: calc(50vh + var(--top-h) / 2 - 22px); display: block; margin-left: 1px;
+  width: 10px; height: 44px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line);
+  background-image: radial-gradient(circle, var(--muted) 1.1px, transparent 1.3px);
+  background-size: 4px 6px; background-position: center; background-repeat: repeat-y;
+  box-shadow: 0 2px 6px -3px rgba(0,0,0,.3);
+}
+.sb-resize:hover .sb-grip, .sb-resize.drag .sb-grip { border-color: var(--accent); }
+body.sb-dragging { cursor: col-resize; user-select: none; }
+body.sb-dragging * { cursor: col-resize !important; }
+@media (max-width: 820px) { .sb-resize { display: none; } }
+@media print { .sb-resize { display: none; } }
