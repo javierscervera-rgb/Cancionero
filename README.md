@@ -1,5 +1,7 @@
 # Cancionero
 
+Dirección: https://cancionero.sansebastianmartir.es/ (subdominio de IONOS con un CNAME a `javierscervera-rgb.github.io`).
+
 Web con cancioneros (listas de reproducción), sus acordes y un **controlador de tono** que transpone todos los acordes al instante.
 
 ## Listas de reproducción
