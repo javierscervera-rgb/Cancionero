@@ -102,3 +102,9 @@ Solo hay una versión del cancionero: la guardada en Google Drive (cuenta de la 
 - La lista de canciones es un panel que se desliza desde abajo: al abrir una canción se recoge (queda una pestaña abajo con la canción actual) y se vuelve a abrir deslizándola hacia arriba o tocándola. La cabecera no cambia.
 - El cancionero (lista de reproducción) se elige en un desplegable.
 - El buscador, el tamaño de letra y el abecedario se quedan fijos arriba al desplazar la lista (también en el ordenador).
+
+## Micrófono (seguir la canción de oído)
+
+- Botón del micrófono, debajo de «Solo letra»: escucha lo que se canta (reconocimiento de voz del navegador, en español) y pasa al párrafo siguiente al llegar a la penúltima palabra del párrafo marcado. Si no hay párrafo marcado, empieza por el primero.
+- Tolera palabras que no reconozca; si se le escapa el final, salta en cuanto oye el comienzo del párrafo siguiente. Los párrafos marcados «(x2…)» esperan a la segunda vuelta.
+- Funciona en Chrome (ordenador y Android) y en Safari (iPhone/iPad, con Siri activado). Pide permiso para el micrófono. En el directo lo pueden usar el líder y Letras; los receptores no lo ven.
