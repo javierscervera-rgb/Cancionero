@@ -201,6 +201,16 @@
     }
     render();
   }
+  // Si otra persona ya ocupa ese papel, devuelve el motivo (y no se puede elegir)
+  function takenMsg(m) {
+    if (live.mode === m || !live.room) return '';
+    const p = peersList().find((x) => !x.sameTab && x.presence && x.presence.role === m);
+    if (!p) return '';
+    const n = cleanName(p.presence.name);
+    return m === 'emisor'
+      ? 'Ya hay un líder' + (n ? ' (' + n + ')' : '') + '. Solo puede haber uno en la sala.'
+      : 'Ya hay alguien en Letras' + (n ? ' (' + n + ')' : '') + '. Solo puede haber uno en la sala.';
+  }
   const cleanName = (n) => (n || '').replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁠-⁯﻿]/g, '').trim().slice(0, 40);
 
   function peersList() { try { return live.room ? live.room.peers() : []; } catch (e) { return []; } }
@@ -227,6 +237,18 @@
       live.mode === 'emisor' ? 'Líder' : live.mode === 'letras' ? 'Letras' : live.mode === 'receptor' ? 'Recibiendo' : 'En directo';
 
     panel.querySelectorAll('[data-mode]').forEach((b) => b.classList.toggle('on', b.dataset.mode === live.mode));
+    // solo puede haber un líder y una persona en Letras por sala
+    const notes = [];
+    ['emisor', 'letras'].forEach((m) => {
+      const b = panel.querySelector('[data-mode="' + m + '"]');
+      const msg = takenMsg(m);
+      b.classList.toggle('taken', !!msg);
+      b.setAttribute('aria-disabled', String(!!msg));
+      b.title = msg || '';
+      if (msg) notes.push(msg);
+    });
+    $('liveTaken').textContent = notes.join(' ');
+    $('liveTaken').hidden = !notes.length;
     $('liveFollowRow').hidden = !followerMode();
     $('liveScrollRow').hidden = live.mode !== 'receptor';
 
@@ -309,6 +331,7 @@
         <button data-mode="letras">Letras</button>
         <button data-mode="receptor">Recibir</button>
       </div>
+      <p class="live-taken" id="liveTaken" hidden></p>
       <div class="sala" id="liveSalaRow" hidden>
         <label class="field">Código de sala
           <input id="liveSala" maxlength="40" placeholder="p. ej. meriba-domingo" autocomplete="off" autocapitalize="off" spellcheck="false">
@@ -348,7 +371,13 @@
         panel.hidden = true; btn.setAttribute('aria-expanded', 'false');
       }
     });
-    panel.querySelectorAll('[data-mode]').forEach((b) => { b.onclick = () => setMode(b.dataset.mode); });
+    panel.querySelectorAll('[data-mode]').forEach((b) => {
+      b.onclick = () => {
+        const msg = takenMsg(b.dataset.mode);
+        if (msg) { flash(msg); return; }
+        setMode(b.dataset.mode);
+      };
+    });
     if (!IN_CLAUDE) {
       $('liveSalaRow').hidden = false;
       $('liveSala').value = live.sala;

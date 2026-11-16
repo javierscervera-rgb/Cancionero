@@ -508,3 +508,7 @@ body.receiving:not(.lyrics-op) #blankBtn { display: none; }
 .sb.blank-sb { display: inline-flex; align-items: center; gap: 4px; }
 .sb.blank-sb[aria-pressed="true"] { background: #c62828; border-color: #c62828; color: #fff; }
 body.receiving:not(.lyrics-op) #scrBlank { display: none; }
+
+/* Directo: papel ya ocupado por otra persona (Líder o Letras) */
+.seg button.taken { background: var(--line); color: var(--muted); opacity: .55; cursor: not-allowed; text-decoration: line-through; }
+.live-taken { font-size: 12.5px; color: var(--muted); margin: -6px 0 10px; line-height: 1.35; }

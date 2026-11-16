@@ -294,11 +294,16 @@
     if (!sh) return;
     sh.style.fontSize = state.font + 'px';
     if (!document.body.classList.contains('emitting') || $('song').hidden) return;
-    let size = state.font;
-    for (let i = 0; i < 4 && sh.scrollWidth > sh.clientWidth + 1 && size > 11; i++) {
-      size = Math.max(11, Math.floor(size * sh.clientWidth / sh.scrollWidth * 10) / 10);
-      sh.style.fontSize = size + 'px';
-    }
+    // sin scroll horizontal: solo se reduce el bloque que no cabe a lo ancho; el resto mantiene el tamaño elegido
+    const avail = sh.clientWidth;
+    [...sh.children].forEach((el) => {
+      el.style.fontSize = '';
+      let size = state.font;
+      for (let i = 0; i < 4 && el.scrollWidth > avail + 1 && size > 9; i++) {
+        size = Math.max(9, Math.floor(size * avail / el.scrollWidth * 10) / 10);
+        el.style.fontSize = size + 'px';
+      }
+    });
   }
   window.addEventListener('resize', () => fitSheet());
 
@@ -706,7 +711,8 @@
   let lastTouchEnd = 0;
   document.addEventListener('touchend', (e) => {
     const now = Date.now();
-    if (now - lastTouchEnd < 320 && !e.target.closest('input, textarea, select')) e.preventDefault();
+    // los toques seguidos en botones (A+, A−, ◀ ▶…) cuentan todos: el zoom ya lo impide touch-action
+    if (now - lastTouchEnd < 320 && !e.target.closest('input, textarea, select, button, a, label, .sb, .tb')) e.preventDefault();
     lastTouchEnd = now;
   }, { passive: false });
   window.addEventListener('wheel', (e) => { if (e.ctrlKey || e.metaKey) e.preventDefault(); }, { passive: false });
