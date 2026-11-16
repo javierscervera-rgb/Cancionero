@@ -64,7 +64,7 @@ button, select, input { font: inherit; color: inherit; }
 .chipbar .chip.on { background: var(--accent); color: #fff; }
 
 /* Layout */
-.layout { display: grid; grid-template-columns: min(640px, 48vw) 1fr; min-height: calc(100vh - var(--top-h)); }
+.layout { display: grid; grid-template-columns: 320px 1fr; min-height: calc(100vh - var(--top-h)); }
 .sidebar {
   position: sticky; top: var(--top-h); height: calc(100vh - var(--top-h)); overflow-y: auto;
   border-right: 1px solid var(--line); background: var(--panel); padding: 14px 10px 30px;
@@ -533,3 +533,13 @@ body.receiving:not(.lyrics-op) #scrBlank { display: none; }
 .letter-pill[hidden] { display: none; }
 .letter-pill b { color: var(--accent); }
 .letter-pill button { border: 0; background: var(--accent-soft); color: var(--accent); border-radius: 999px; width: 22px; height: 22px; cursor: pointer; font-size: 11px; }
+
+/* Índice: cada canción en una pastilla del doble de alto */
+.song-list li { margin-bottom: 6px; }
+.song-list a {
+  align-items: center; min-height: calc(var(--lf, 14px) * 4.4); padding: 12px 12px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--bg);
+}
+.song-list a:hover { border-color: var(--accent); }
+.song-list a.active { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 4px 0 0 var(--accent); }
+.abc-grid { max-width: none; }
