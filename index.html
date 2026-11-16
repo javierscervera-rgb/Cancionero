@@ -2,17 +2,20 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Cancionero</title>
 <meta name="description" content="Cancioneros con acordes, transposición de tono, modo pantalla y directo">
-<link rel="stylesheet" href="styles.css?v=202611152108">
+<link rel="stylesheet" href="styles.css?v=202611160724">
 </head>
 <body>
 <header class="top">
   <button class="icon-btn only-mobile" id="backBtn" aria-label="Volver al índice" hidden>←</button>
   <a class="brand" href="#"><strong>Cancionero</strong></a>
   <div class="top-actions">
-    <button class="pill" id="notationBtn" title="Cambiar notación">DO · C</button>
+    <button class="pill" id="notationBtn" title="Cambiar la notación de los acordes (DO RE MI / C D E)" aria-label="Notación de acordes"><b>DO</b>/C</button>
+    <button class="icon-btn screen-top" id="screenBtn" title="Modo Pantalla: solo la letra, blanca sobre negro" aria-label="Modo Pantalla" hidden>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/></svg>
+    </button>
     <button class="icon-btn" id="themeBtn" aria-label="Cambiar tema">☾</button>
   </div>
 </header>
@@ -64,37 +67,31 @@
     <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.9 19.35a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.54 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.65 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9c.26.6.85 1 1.51 1.03H21a2 2 0 1 1 0 4h-.09c-.66.03-1.25.43-1.51 1.03z"/></svg>
   </button>
   <div class="tb-items" id="tbItems">
-  <button class="tb" id="upBtn" aria-label="Subir medio tono" title="Subir medio tono">+</button>
-  <label class="tb key" title="Elegir tono">
+  <button class="tb key-ctl" id="upBtn" aria-label="Subir medio tono" title="Subir medio tono">+</button>
+  <label class="tb key key-ctl" title="Elegir tono">
     <span class="key-name" id="keyName"></span>
     <span class="key-off" id="offset"></span>
     <select id="keySelect" aria-label="Elegir tono"></select>
   </label>
-  <button class="tb" id="downBtn" aria-label="Bajar medio tono" title="Bajar medio tono">−</button>
-  <button class="tb small" id="resetBtn" aria-label="Volver al tono original" title="Tono original">↺</button>
+  <button class="tb key-ctl" id="downBtn" aria-label="Bajar medio tono" title="Bajar medio tono">−</button>
+  <button class="tb small key-ctl" id="resetBtn" aria-label="Volver al tono original" title="Tono original">↺</button>
   <span class="tb-sep"></span>
   <button class="tb" id="fontUp" aria-label="Letra más grande" title="Letra más grande">A<sup>+</sup></button>
   <button class="tb" id="fontDown" aria-label="Letra más pequeña" title="Letra más pequeña">A<sup>−</sup></button>
   <span class="tb-sep"></span>
   <button class="tb small" id="lyricsOnly" aria-pressed="false" title="Mostrar solo la letra">Solo<br>letra</button>
-  <button class="tb small" id="monoFont" aria-pressed="false" title="Fuente de ancho fijo">Mono</button>
-  <span class="tb-sep"></span>
-  <button class="tb small screen-btn" id="screenBtn" title="Modo Pantalla: solo la letra, blanca sobre negro">
-    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/></svg>
-    Pantalla
-  </button>
   </div>
 </nav>
 
-<script src="songs.js?v=202611152108"></script>
-<script src="songs-parroquia.js?v=202611152108"></script>
-<script src="songs-adoracion.js?v=202611152108"></script>
-<script src="chords.js?v=202611152108"></script>
-<script src="app.js?v=202611152108"></script>
-<script src="live.js?v=202611152108"></script>
-<script src="screen.js?v=202611152108"></script>
-<script src="chordeditor.js?v=202611152108"></script>
-<script src="editor.js?v=202611152108"></script>
-<script src="collections.js?v=202611152108"></script>
+<script src="songs.js?v=202611160724"></script>
+<script src="songs-parroquia.js?v=202611160724"></script>
+<script src="songs-adoracion.js?v=202611160724"></script>
+<script src="chords.js?v=202611160724"></script>
+<script src="app.js?v=202611160724"></script>
+<script src="live.js?v=202611160724"></script>
+<script src="screen.js?v=202611160724"></script>
+<script src="chordeditor.js?v=202611160724"></script>
+<script src="editor.js?v=202611160724"></script>
+<script src="collections.js?v=202611160724"></script>
 </body>
 </html>

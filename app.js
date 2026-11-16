@@ -13,7 +13,6 @@
     notation: store.get('notation', 'latin'),
     font: store.get('font', window.innerWidth < 600 ? 14 : 16),
     lyricsOnly: store.get('lyricsOnly', false),
-    mono: store.get('mono', false),
     shifts: store.get('shifts', {}),
     category: null,
     list: null,
@@ -230,7 +229,6 @@
     $('sheet').innerHTML = paras.map((p, i) =>
       `<pre class="para${i === state.para ? ' sel' : ''}" data-i="${i}" tabindex="0">${p.join('\n')}</pre>`).join('');
     $('sheet').style.fontSize = state.font + 'px';
-    $('sheet').classList.toggle('mono', state.mono);
     fitSheet();
     if (state.para !== null) requestAnimationFrame(() => centerPara(state.para, false));
     notifyView();
@@ -252,7 +250,6 @@
     $('keyName').textContent = keyName(s, shift);
     $('resetBtn').disabled = !sd;
     $('lyricsOnly').setAttribute('aria-pressed', String(state.lyricsOnly));
-    $('monoFont').setAttribute('aria-pressed', String(state.mono));
 
     const v = $('variants');
     if (s.altShifts.length) {
@@ -366,6 +363,7 @@
     const s = SONGS.find((x) => x.code === code);
     document.body.classList.toggle('reading', !!s);
     $('toolbar').hidden = !s;
+    $('screenBtn').hidden = !s;
     $('backBtn').hidden = !s;
     if (!s) {
       state.current = null;
@@ -598,7 +596,20 @@
   $('fontUp').onclick = () => { state.font = Math.min(30, state.font + 1); store.set('font', state.font); renderSheet(); };
   $('fontDown').onclick = () => { state.font = Math.max(11, state.font - 1); store.set('font', state.font); renderSheet(); };
   $('lyricsOnly').onclick = () => { state.lyricsOnly = !state.lyricsOnly; store.set('lyricsOnly', state.lyricsOnly); renderSheet(); };
-  $('monoFont').onclick = () => { state.mono = !state.mono; store.set('mono', state.mono); renderSheet(); };
+
+  // Sin zoom en ningún caso (pellizco, doble toque, Ctrl+rueda, Ctrl +/-)
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach((t) => document.addEventListener(t, (e) => e.preventDefault(), { passive: false }));
+  document.addEventListener('touchmove', (e) => { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (now - lastTouchEnd < 320 && !e.target.closest('input, textarea, select')) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+  window.addEventListener('wheel', (e) => { if (e.ctrlKey || e.metaKey) e.preventDefault(); }, { passive: false });
+  window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && ['+', '-', '=', '0', '_'].includes(e.key)) e.preventDefault();
+  });
 
   // Engranaje: contraer / expandir la barra
   function setCollapsed(c) {
@@ -607,7 +618,17 @@
     document.body.classList.toggle('tb-collapsed', c);
     store.set('tbCollapsed', c);
     fitSheet();
+    armAutoCollapse();
   }
+  // Los botones del engranaje se recogen solos tras 30 s sin tocarlos
+  let tbTimer = null;
+  function armAutoCollapse() {
+    clearTimeout(tbTimer);
+    if ($('toolbar').classList.contains('collapsed')) return;
+    tbTimer = setTimeout(() => setCollapsed(true), 30000);
+  }
+  ['pointerdown', 'keydown', 'focusin', 'wheel'].forEach((t) => $('toolbar').addEventListener(t, armAutoCollapse, { passive: true }));
+  $('toolbar').addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') armAutoCollapse(); }, { passive: true });
   $('gearBtn').onclick = () => setCollapsed(!$('toolbar').classList.contains('collapsed'));
   setCollapsed(store.get('tbCollapsed', false));
 
@@ -624,7 +645,9 @@
   $('search').oninput = (e) => { state.query = e.target.value; renderList(); };
   $('backBtn').onclick = () => { location.hash = ''; };
 
-  function updateNotationBtn() { $('notationBtn').textContent = state.notation === 'latin' ? 'DO RE MI' : 'C D E'; }
+  function updateNotationBtn() {
+    $('notationBtn').innerHTML = state.notation === 'latin' ? '<b>DO</b>/C' : 'DO/<b>C</b>';
+  }
   $('notationBtn').onclick = () => {
     state.notation = state.notation === 'latin' ? 'us' : 'latin';
     store.set('notation', state.notation);
@@ -643,6 +666,8 @@
 
   document.addEventListener('keydown', (e) => {
     if (e.target.matches('input, select, textarea') || !state.current || document.body.classList.contains('screen-mode')) return;
+    const receiving = document.body.classList.contains('receiving'); // el tono lo decide el emisor
+    if (receiving && ['+', '=', '-'].includes(e.key)) return;
     if (e.key === '+' || e.key === '=') setShift((state.shifts[state.current.code] || 0) + 1);
     else if (e.key === '-') setShift((state.shifts[state.current.code] || 0) - 1);
     else if (e.key === 'ArrowDown' && state.paraCount) { e.preventDefault(); selectPara(state.para === null ? 0 : Math.min(state.paraCount - 1, state.para + 1)); }

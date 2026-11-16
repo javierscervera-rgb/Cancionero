@@ -95,7 +95,7 @@
 
   // ---------- Bloqueo de zoom y scroll horizontal al emitir ----------
   const vp = document.querySelector('meta[name="viewport"]');
-  const vpDefault = vp ? vp.getAttribute('content') : '';
+  const vpDefault = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no'; // el zoom está siempre desactivado
   const noGesture = (e) => e.preventDefault();
   const noPinch = (e) => { if (e.touches && e.touches.length > 1) e.preventDefault(); };
   function lockView(on) {
@@ -202,6 +202,7 @@
     const notFollowing = live.mode === 'receptor' && (live.paused || !ems.some((p) => p.peer === live.following));
     bar.classList.toggle('off', notFollowing);
     document.body.classList.toggle('live-on', live.mode !== 'off');
+    document.body.classList.toggle('receiving', live.mode === 'receptor'); // el tono lo decide el emisor
   }
 
   function expandBar() {

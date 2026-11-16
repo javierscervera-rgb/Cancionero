@@ -15,8 +15,8 @@ En el lateral izquierdo se elige el cancionero; cada uno tiene sus propias colec
 - Índice con búsqueda por título o letra y filtro por categoría (Espíritu Santo, Alabanza, Adoración, Blessing, Sanación, Virgen María).
 - Controlador de tono: botones **−/+** (medio tono), selector directo de tonalidad y botón para volver al tono original.
 - Cuando el cancionero tenía la misma canción en otro tono, aparece un acceso directo a ese tono.
-- Notación latina (DO RE MI) o americana (C D E).
-- Tamaño de letra, modo "solo letra", fuente monoespaciada opcional, tema claro/oscuro.
+- Notación latina o americana con el botón **DO/C** (en negrita la elegida).
+- Tamaño de letra, modo "solo letra", tema claro/oscuro. Los controles de la derecha se recogen solos tras 30 s sin tocarlos. El zoom de la página está desactivado.
 - Las canciones están en párrafos: al tocar uno se resalta y se centra en la pantalla.
 - Atajos de teclado: `+` / `-` cambian el tono, `↑` / `↓` cambian de párrafo, `←` / `→` pasan de canción.
 - El tono elegido para cada canción se recuerda en el navegador.
@@ -57,7 +57,7 @@ Botón **Pantalla** en la barra de la derecha: fondo negro y solo la letra (sin 
 En la versión publicada en Claude aparece el botón **En directo**:
 
 - **Emitir**: comparte tu canción, el tono y el párrafo que marcas (al tocar un párrafo se centra en la pantalla).
-- **Recibir**: tu pantalla sigue al emisor. Si navegas por tu cuenta, el seguimiento se pausa y aparece "Volver al directo".
+- **Recibir**: tu pantalla sigue al emisor, también en el tono (el receptor no ve los controles de tono). Si navegas por tu cuenta, el seguimiento se pausa y aparece "Volver al directo".
 - El aviso de estado se ve completo 10 s cada vez que cambia y luego queda como un punto rojo; si no estás siguiendo al emisor, es un aro rojo sin relleno.
 - Si hay varios emisores, cada receptor elige a quién seguir.
 

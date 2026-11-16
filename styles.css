@@ -473,3 +473,12 @@ body.editing { overflow: hidden; }
 .note-actions { display: flex; align-items: center; gap: 8px; }
 .note-actions .link-btn { margin: 0; }
 @media print { #noteBtn { display: none !important; } }
+
+/* ---------- Ajustes: zoom desactivado, receptor sin controles de tono, cabecera ---------- */
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body.receiving .key-ctl, body.receiving .variants { display: none !important; }
+body.receiving .toolbar .tb-sep:first-of-type { display: none; }
+#notationBtn { font-weight: 400; letter-spacing: .3px; }
+#notationBtn b { font-weight: 800; color: var(--accent); }
+.screen-top { display: inline-grid; place-items: center; padding: 0; width: 34px; }
+@media (max-width: 820px) { .top-actions { gap: 6px; } .top .icon-btn { min-width: 32px; width: 32px; padding: 0; } }
