@@ -664,7 +664,8 @@
       SONGS.forEach((s, i) => { s.index = i; load(s); applyCats(s); });
       if (state.category && !allCats().includes(state.category)) state.category = null;
       renderLists(); renderChips(); renderList();
-      if (cur && !SONGS.includes(cur)) location.hash = '';
+      if (!cur) { const h = decodeURIComponent(location.hash.replace(/^#\/?/, '')); if (h && SONGS.some((x) => x.code === h)) showSong(h); }
+      else if (!SONGS.includes(cur)) location.hash = '';
       else if (cur && sig(cur) !== before) {
         const y = window.scrollY, para = state.para;
         showSong(cur.code);
