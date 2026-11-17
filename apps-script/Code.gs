@@ -85,7 +85,7 @@ function doPost(e) {
     doc.rev = (doc.rev || 0) + 1;
     doc.updated = new Date().toISOString();
     doc.log = Array.isArray(doc.log) ? doc.log : [];
-    doc.log.push({ t: doc.updated, op: req.op, what: str_(req.code || req.name || '', 60), by: str_(req.by, 40) });
+    doc.log.push({ t: doc.updated, op: req.op, what: str_(req.code || req.name || req.list || '', 60), by: str_(req.by, 40) });
     if (doc.log.length > 500) doc.log = doc.log.slice(-500);
     file_().setContent(JSON.stringify(doc));
     props.setProperty('REV', String(doc.rev));
@@ -146,11 +146,22 @@ function apply_(doc, r) {
       doc.lists = nextL;
       return null;
     case 'sel':
-      // selección compartida: lista ordenada de códigos de canciones
+      // selecciones compartidas, una por cancionero: doc.selections[lista] = [códigos en orden]
       if (!Array.isArray(r.codes)) return 'seleccion';
-      var seen = {}, out = [];
-      r.codes.forEach(function (c) { if (typeof c === 'string' && !seen[c] && find_(doc, c)) { seen[c] = 1; out.push(c); } });
-      doc.selection = out.slice(0, 300);
+      doc.selections = doc.selections && typeof doc.selections === 'object' ? doc.selections : {};
+      if (Array.isArray(doc.selection)) { // formato antiguo (una sola selección): se reparte por cancionero
+        doc.selection.forEach(function (c) { var x = find_(doc, c); if (x) { var l = x.list; (doc.selections[l] = doc.selections[l] || []).push(c); } });
+        delete doc.selection;
+      }
+      var groups = {};
+      r.codes.forEach(function (c) {
+        var x = typeof c === 'string' ? find_(doc, c) : null;
+        if (!x || (r.list && x.list !== r.list)) return;
+        var g = groups[x.list] = groups[x.list] || [];
+        if (g.indexOf(c) < 0) g.push(c);
+      });
+      if (r.list) doc.selections[r.list] = (groups[r.list] || []).slice(0, 300);
+      else Object.keys(groups).forEach(function (l) { doc.selections[l] = groups[l].slice(0, 300); });
       return null;
     case 'addCat':
       var n = str_(r.name, 40).trim();

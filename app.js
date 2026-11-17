@@ -37,9 +37,20 @@
   let UPPER_CATS = listById('meriba').cats || [];
   let baseCustom = (window.CLOUD_CATS || []).slice(); // colecciones creadas por los editores (compartidas)
   // Selección (compartida en Drive): canciones elegidas, en orden. selLocal = cambio aún no guardado
-  let baseSel = (window.CLOUD_SEL || []).slice();
-  let selLocal = store.get('selPending', null);
-  if (!Array.isArray(selLocal)) selLocal = null;
+  // una selección por cancionero: { idLista: [códigos en orden] }
+  let baseSel = {};
+  let selLocal = store.get('selPending2', null); // cambios aún no guardados en Drive, por cancionero
+  if (!selLocal || typeof selLocal !== 'object' || Array.isArray(selLocal)) selLocal = null;
+  const songList = (code) => { const x = SONGS.find((s) => s.code === code); return x ? x.list : null; };
+  function splitByList(codes) { // reparte una lista de códigos por cancionero
+    const out = {};
+    (codes || []).forEach((c) => { const l = songList(c); if (l) (out[l] = out[l] || []).push(c); });
+    return out;
+  }
+  function setBaseSel(selections, old) {
+    baseSel = selections && typeof selections === 'object' && !Array.isArray(selections) ? JSON.parse(JSON.stringify(selections)) : {};
+    if (Array.isArray(old)) Object.entries(splitByList(old)).forEach(([l, c]) => { if (!baseSel[l]) baseSel[l] = c; });
+  }
   // Colecciones: las del cancionero + las creadas en este dispositivo; pertenencia editable por canción
   let coll = store.get('collections', { custom: [], songs: {} });
   if (!coll || !Array.isArray(coll.custom) || typeof coll.songs !== 'object') coll = { custom: [], songs: {} };
@@ -125,8 +136,22 @@
     });
     Object.keys(coll.songs).forEach((code) => { if (!SONGS.some((x) => x.code === code)) delete coll.songs[code]; });
     if (JSON.stringify(coll) !== before) store.set('collections', coll);
-    if (selLocal && JSON.stringify(selLocal) === JSON.stringify(baseSel)) { selLocal = null; store.set('selPending', null); }
+    if (selLocal) {
+      Object.keys(selLocal).forEach((l) => { if (JSON.stringify(selLocal[l]) === JSON.stringify(baseSel[l] || [])) delete selLocal[l]; });
+      if (!Object.keys(selLocal).length) selLocal = null;
+      store.set('selPending2', selLocal);
+    }
   }
+  setBaseSel(window.CLOUD_SEL, window.CLOUD_SEL_OLD);
+  // selección pendiente del formato antiguo (una sola): se reparte por cancionero
+  (function () {
+    const old = store.get('selPending', null);
+    if (Array.isArray(old)) {
+      selLocal = selLocal || {};
+      Object.entries(splitByList(old)).forEach(([l, c]) => { if (!selLocal[l]) selLocal[l] = c; });
+      store.set('selPending', null); store.set('selPending2', selLocal);
+    }
+  })();
   reconcile();
   document.body.classList.add('can-edit'); // cualquiera puede editar (se guarda en Drive)
   SONGS.forEach((s, i) => { s.index = i; load(s); applyCats(s); });
@@ -303,20 +328,29 @@
   })();
 
   // ---------- Selección ----------
-  const selCodes = () => (selLocal || baseSel).filter((c, i, arr) => arr.indexOf(c) === i && SONGS.some((s) => s.code === c));
-  const selSongs = () => selCodes().map((c) => SONGS.find((s) => s.code === c));
-  const inSel = (code) => selCodes().includes(code);
-  function setSelection(codes) {
-    selLocal = codes.filter((c, i) => typeof c === 'string' && codes.indexOf(c) === i);
-    store.set('selPending', selLocal);
-    if (!selLocal.length && state.tab === 'sel') setTab('all');
+  // selección del cancionero (por defecto, el que está elegido)
+  const selCodes = (list) => {
+    list = list || state.list;
+    const arr = (selLocal && selLocal[list]) || baseSel[list] || [];
+    return arr.filter((c, i) => arr.indexOf(c) === i && songList(c) === list);
+  };
+  const selSongs = (list) => selCodes(list).map((c) => SONGS.find((s) => s.code === c));
+  const inSel = (code) => selCodes(songList(code)).includes(code);
+  function setSelection(codes, list) {
+    list = list || state.list;
+    selLocal = selLocal || {};
+    selLocal[list] = codes.filter((c, i) => typeof c === 'string' && codes.indexOf(c) === i && songList(c) === list);
+    store.set('selPending2', selLocal);
+    if (list === state.list && !selLocal[list].length && state.tab === 'sel') setTab('all');
     localChanged();
     renderList();
     if (state.current) { const ls = navList(state.current), li = ls.indexOf(state.current); updatePager(ls, li); }
   }
   function toggleSel(code) {
-    const cur = selCodes();
-    setSelection(cur.includes(code) ? cur.filter((c) => c !== code) : cur.concat(code));
+    const list = songList(code);
+    if (!list) return;
+    const cur = selCodes(list);
+    setSelection(cur.includes(code) ? cur.filter((c) => c !== code) : cur.concat(code), list);
   }
   function setTab(t) {
     state.tab = t === 'sel' ? 'sel' : 'all';
@@ -327,7 +361,7 @@
   }
   // canciones por las que se avanza con ← → en la canción abierta
   function navList(s) {
-    if (state.tab === 'sel' && inSel(s.code)) return selSongs();
+    if (state.tab === 'sel' && inSel(s.code)) return selSongs(s.list);
     return listSongs(s.list);
   }
   function renderSelUi() {
@@ -959,7 +993,7 @@
     },
     exportEdits: () => ({ formato: 'cancionero-meriba', version: 3, canciones: JSON.parse(JSON.stringify(edits)), colecciones: JSON.parse(JSON.stringify(coll)), comentarios: JSON.parse(JSON.stringify(notes)) }),
     toggleSel: (code) => toggleSel(code),
-    selection: () => selCodes(),
+    selection: (list) => selCodes(list),
     hasChanges: () => Object.keys(edits).length > 0 || coll.custom.length > 0 || coll.removed.length > 0 || Object.keys(coll.songs).length > 0 || Object.keys(notes).length > 0,
     importEdits(obj) {
       if (!obj || typeof obj !== 'object') return 0;
@@ -1064,7 +1098,7 @@
       Object.entries(edits).forEach(([code, e]) => out.songs.push({ code, title: e.title, lines: e.lines.slice() }));
       Object.entries(notes).forEach(([code, text]) => out.notes.push({ code, text }));
       Object.entries(coll.songs).forEach(([code, list]) => out.cats.push({ code, categories: list.slice() }));
-      out.sel = selLocal ? selLocal.slice() : null;
+      out.sel = selLocal ? JSON.parse(JSON.stringify(selLocal)) : null; // { idLista: [códigos] }
       return out;
     },
     // El cancionero tal como viene de la fuente (sin cambios locales), para subirlo la primera vez
@@ -1072,7 +1106,7 @@
       return {
         lists: JSON.parse(JSON.stringify(LISTS)),
         customCats: baseCustom.slice(),
-        selection: baseSel.slice(),
+        selections: JSON.parse(JSON.stringify(baseSel)),
         songs: SONGS.map((s) => {
           const o = { code: s.code, title: ORIG[s.code].title, lines: ORIG[s.code].lines.slice(), variants: s.variants || [], categories: (s.baseCats || []).slice(), list: s.list };
           if (s.comment) o.comment = s.comment;
@@ -1090,7 +1124,7 @@
       CATS = LISTS.flatMap((l) => l.cats || []);
       UPPER_CATS = listById('meriba').cats || [];
       baseCustom = Array.isArray(doc.customCats) ? doc.customCats.slice() : [];
-      baseSel = Array.isArray(doc.selection) ? doc.selection.slice() : [];
+      setBaseSel(doc.selections, doc.selection);
       const byCode = {};
       SONGS.forEach((s) => { byCode[s.code] = s; });
       const next = doc.songs.filter((d) => d && typeof d.code === 'string' && Array.isArray(d.lines)).map((d) => {

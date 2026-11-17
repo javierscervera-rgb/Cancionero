@@ -113,7 +113,7 @@ Solo hay una versión del cancionero: la guardada en Google Drive (cuenta de la 
 ## Selección
 
 - Desliza una canción hacia la derecha (o la izquierda) para seleccionarla: debajo aparece «● Seleccionar» y, al pasar el umbral, se pone en rojo. Queda un punto rojo a la izquierda. Vuelve a deslizarla para quitarla («✕ Quitar»), en cualquier pestaña.
-- Con alguna canción seleccionada aparecen las pestañas «Selección» y «Todas» bajo el buscador. La selección puede mezclar canciones de los tres cancioneros.
+- Con alguna canción seleccionada en el cancionero elegido aparecen las pestañas «Selección» y «Todas» bajo el buscador.
 - En «Selección», «↕ Ordenar» permite arrastrar cada canción (desde cualquier punto de la pastilla o desde el asa ≡) arriba o abajo; las demás se apartan mientras arrastras y no se abren ni se seleccionan.
 - En pantallas táctiles el desplazamiento de la lista lo hace la web (con inercia) para que el deslizar lateral sea tolerante: un gesto inclinado hasta ~55° cuenta como deslizar. Al abrir una canción desde ahí, anterior/siguiente siguen el orden de la selección.
-- La selección es una sola, compartida y guardada en Drive (operación `sel` del script).
+- Hay una selección por cancionero (Meribá, Parroquia y Adoración), compartida y guardada en Drive (`selections` en el archivo; operación `sel` del script con la lista).
