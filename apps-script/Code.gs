@@ -153,6 +153,12 @@ function apply_(doc, r) {
       if (!L || !nc) return 'lista';
       L.cats = nc;
       return null;
+    case 'settings':
+      // ajustes comunes: máximo de caracteres por párrafo (0 = sin límite)
+      doc.settings = doc.settings && typeof doc.settings === 'object' ? doc.settings : {};
+      if (typeof r.maxChars === 'number' && r.maxChars >= 0 && r.maxChars <= 2000) doc.settings.maxChars = Math.round(r.maxChars);
+      else return 'ajustes';
+      return null;
     case 'sel':
       // selecciones compartidas, una por cancionero: doc.selections[lista] = [códigos en orden]
       if (!Array.isArray(r.codes)) return 'seleccion';

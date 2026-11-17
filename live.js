@@ -45,7 +45,7 @@
   function snapshot() {
     const s = window.App.getState();
     if (live.mode === 'letras') return { v: 2, kind: 'para', seq: ++live.seq, song: live.last ? live.last.song : '', para: live.last ? live.last.para : null, sub: live.last ? live.last.sub || 0 : 0, pt: live.last ? live.last.pt : 0, blank: s.blank, bt: live.blankT };
-    return { v: 2, seq: ++live.seq, song: s.song, shift: s.shift, para: s.para, sub: s.sub, pt: live.paraT, blank: s.blank, bt: live.blankT, rv: window.Cloud ? window.Cloud.rev() : 0 };
+    return { v: 2, seq: ++live.seq, song: s.song, shift: s.shift, para: s.para, sub: s.sub, mc: window.App.maxChars(), pt: live.paraT, blank: s.blank, bt: live.blankT, rv: window.Cloud ? window.Cloud.rev() : 0 };
   }
   const followerMode = () => live.mode === 'receptor' || live.mode === 'letras';
   function send() {
@@ -101,6 +101,8 @@
     if (msg.peer !== live.following) return;
     // el líder tiene una versión más nueva del cancionero compartido
     if (window.Cloud && Number.isInteger(d.rv)) window.Cloud.behind(d.rv);
+    // mismo máximo de caracteres que el líder, para que los párrafos coincidan
+    if (Number.isInteger(d.mc) && d.mc !== window.App.maxChars()) window.App.setMaxChars(d.mc, false);
     const prev = live.last;
     live.last = { song: d.song, shift: d.shift, para, sub, pt };
     // si Letras pasó un párrafo más reciente de esta canción, se mantiene
@@ -251,6 +253,9 @@
     $('liveTaken').textContent = notes.join(' ');
     $('liveTaken').hidden = !notes.length;
     $('liveFollowRow').hidden = !followerMode();
+    $('liveMaxRow').hidden = live.mode !== 'emisor';
+    const mc = window.App.maxChars();
+    $('liveMaxVal').textContent = mc ? mc + ' caracteres' : 'Sin límite';
     $('liveScrollRow').hidden = live.mode !== 'receptor';
 
     const sel = $('liveFollow');
@@ -342,6 +347,15 @@
       <label class="field">Tu nombre (opcional)
         <input id="liveName" maxlength="40" placeholder="p. ej. Guitarra 1" autocomplete="off">
       </label>
+      <div class="field live-max" id="liveMaxRow" hidden>
+        <span>Máximo de caracteres por párrafo</span>
+        <span class="lm-ctl">
+          <button type="button" class="pill" id="liveMaxDown" aria-label="Menos caracteres">−</button>
+          <b id="liveMaxVal"></b>
+          <button type="button" class="pill" id="liveMaxUp" aria-label="Más caracteres">+</button>
+        </span>
+        <small class="muted">Los párrafos más largos se dividen. Se guarda en Drive y lo siguen todos.</small>
+      </div>
       <label class="field" id="liveFollowRow" hidden>Líder al que sigues
         <select id="liveFollow"></select>
       </label>
@@ -401,6 +415,16 @@
       if (live.mode !== 'off') live.room.presence({ name: cleanName(live.name) }).catch(() => {});
     };
     $('liveFollow').onchange = (e) => { setFollowing(e.target.value); live.last = null; render(); };
+    // ∞ → 300 → … → 60 (de 20 en 20); al subir de 600 vuelve a «Sin límite»
+    const stepMax = (d) => {
+      let n = window.App.maxChars();
+      if (!n) n = d < 0 ? 300 : 0;
+      else { n += d * 20; if (n > 600) n = 0; if (n && n < 60) n = 60; }
+      window.App.setMaxChars(n, true);
+      render(); send();
+    };
+    $('liveMaxDown').onclick = () => stepMax(-1);
+    $('liveMaxUp').onclick = () => stepMax(1);
     $('liveScroll').checked = live.followScroll;
     $('liveScroll').onchange = (e) => { live.followScroll = e.target.checked; store.set('liveScroll', live.followScroll); };
     $('liveBarBtn').onclick = () => { live.paused = false; applyLast(); render(); };

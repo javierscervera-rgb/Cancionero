@@ -20,6 +20,12 @@
     paraCount: 0,
     blank: false,          // pantalla de presentación en negro (sin letra)
     sub: 0,                // trozo del párrafo que se proyecta (si el párrafo es muy largo)
+    // máximo de caracteres por párrafo (común, guardado en Drive; lo decide el líder). 0 = sin límite
+    maxChars: (() => {
+      const p = store.get('settingsPending', null);
+      if (p && typeof p.maxChars === 'number') return p.maxChars;
+      return (window.CLOUD_SETTINGS && +window.CLOUD_SETTINGS.maxChars) || 0;
+    })(),
     query: '',
     letter: null,          // filtro por inicial del título (A, B… o #)
     tab: store.get('tab', 'all'), // pestaña de la lista: 'sel' (Selección) o 'all' (Todas)
@@ -86,6 +92,53 @@
   if (!newSongs || typeof newSongs !== 'object') newSongs = {};
   const temp = {}; // code -> {title, lines} | 'orig'  (mientras se recibe en directo)
 
+  // ---------- Máximo de caracteres por párrafo ----------
+  // Una línea de texto (sin acordes encima) demasiado larga se parte: puntos, luego comas, luego palabras.
+  const SEPS = [/(?<=[.;:!?»”])\s+/, /(?<=,)\s+/, /\s+/];
+  function splitLong(line, max, lvl = 0) {
+    if (line.length <= max || lvl >= SEPS.length) return [line];
+    const parts = line.trim().split(SEPS[lvl]);
+    if (parts.length < 2) return splitLong(line, max, lvl + 1);
+    const out = []; let cur = '';
+    parts.forEach((p) => { if (cur && (cur + ' ' + p).length > max) { out.push(cur); cur = p; } else cur = cur ? cur + ' ' + p : p; });
+    if (cur) out.push(cur);
+    return out.flatMap((x) => (x.length > max ? splitLong(x, max, lvl + 1) : [x]));
+  }
+  function fitLines(lines) {
+    const max = state.maxChars;
+    if (!max) return lines.slice();
+    const out = [];
+    lines.forEach((l, j) => {
+      const afterChord = j > 0 && C.isChordLine(lines[j - 1]);
+      if (!afterChord && !C.isChordLine(l) && l.length > max) out.push(...splitLong(l, max));
+      else out.push(l);
+    });
+    return out;
+  }
+  // Un párrafo con más caracteres de letra que el máximo se divide en varios (línea de acordes + letra van juntas)
+  function fitParas(s, paras) {
+    const max = state.maxChars;
+    if (!max) return paras;
+    const out = [];
+    paras.forEach((idxs) => {
+      const units = [];
+      for (let k = 0; k < idxs.length; k++) {
+        const i = idxs[k];
+        if (s.chordFlags[i] && k + 1 < idxs.length && !s.chordFlags[idxs[k + 1]]) { units.push([i, idxs[k + 1]]); k++; }
+        else units.push([i]);
+      }
+      const size = (u) => u.reduce((n, i) => n + (s.chordFlags[i] ? 0 : s.lines[i].trim().length), 0);
+      let cur = [], len = 0;
+      units.forEach((u) => {
+        const n = size(u);
+        if (cur.length && len + n > max) { out.push(cur); cur = []; len = 0; }
+        cur.push(...u); len += n;
+      });
+      if (cur.length) out.push(cur);
+    });
+    return out;
+  }
+
   function prep(s) {
     s.key = C.detectKey(s.lines);
     s.chordFlags = s.lines.map(C.isChordLine);
@@ -98,6 +151,7 @@
       else curP.push(j);
     });
     if (curP.length) s.paras.push(curP);
+    s.paras = fitParas(s, s.paras);
     (s.variants || []).forEach((v) => {
       const k = C.detectKey(v);
       if (k && s.key) {
@@ -111,7 +165,8 @@
     const t = temp[s.code];
     const src = t === 'orig' ? ORIG[s.code] : (t || edits[s.code] || ORIG[s.code]);
     s.title = src.title;
-    s.lines = src.lines.slice();
+    s.srcLines = src.lines.slice(); // texto tal cual (para editar)
+    s.lines = fitLines(src.lines);  // adaptado al máximo de caracteres
     s.edited = !!edits[s.code] && !t;
     prep(s);
   }
@@ -1022,6 +1077,19 @@
     paraCount: () => state.paraCount,
     selectPara: (i) => selectPara(i),
     sub: () => state.sub,
+    maxChars: () => state.maxChars,
+    // cambia el máximo de caracteres; persist = guardarlo en Drive (lo hace el líder)
+    setMaxChars(n, persist) {
+      n = Math.max(0, Math.min(2000, Math.round(+n || 0)));
+      if (n === state.maxChars && !persist) return;
+      const changed = n !== state.maxChars;
+      state.maxChars = n;
+      if (persist) { store.set('settingsPending', { maxChars: n }); localChanged(); }
+      if (!changed) return;
+      SONGS.forEach(load);
+      if (state.current) { state.para = null; state.sub = 0; renderSheet(); }
+      notifyView();
+    },
     setSub(n, fromSync) {
       if (!Number.isInteger(n) || n < 0 || n === state.sub) return;
       state.sub = n;
@@ -1039,7 +1107,8 @@
       if (!s) return null;
       const shift = state.shifts[s.code] || 0;
       const flats = s.key ? C.prefersFlats(s.key.semi + shift, s.key.minor) : false;
-      const text = s.lines.map((line, i) => s.chordFlags[i] && (shift || state.notation !== 'latin')
+      const src = s.srcLines || s.lines;
+      const text = src.map((line) => C.isChordLine(line) && (shift || state.notation !== 'latin')
         ? C.transposeLine(line, shift, flats, state.notation).map((g) => g.text).join('') : line).join('\n');
       return { code: s.code, title: s.title, text, shift, keyName: keyName(s, shift), edited: !!edits[s.code], temp: !!temp[s.code], notation: state.notation };
     },
@@ -1189,6 +1258,7 @@
       Object.entries(coll.songs).forEach(([code, list]) => out.cats.push({ code, categories: list.slice() }));
       out.sel = selLocal ? JSON.parse(JSON.stringify(selLocal)) : null; // { idLista: [códigos] }
       out.newSongs = Object.values(newSongs).map((x) => JSON.parse(JSON.stringify(x)));
+      out.settings = store.get('settingsPending', null);
       return out;
     },
     // El cancionero tal como viene de la fuente (sin cambios locales), para subirlo la primera vez
@@ -1215,6 +1285,10 @@
       UPPER_CATS = listById('meriba').cats || [];
       baseCustom = Array.isArray(doc.customCats) ? doc.customCats.slice() : [];
       setBaseSel(doc.selections, doc.selection);
+      // ajustes comunes de Drive (si no hay un cambio propio pendiente)
+      const pend = store.get('settingsPending', null), ds = doc.settings || {};
+      if (pend && pend.maxChars === (+ds.maxChars || 0)) store.set('settingsPending', null);
+      else if (!pend && (+ds.maxChars || 0) !== state.maxChars) state.maxChars = +ds.maxChars || 0;
       const byCode = {};
       SONGS.forEach((s) => { byCode[s.code] = s; });
       const next = doc.songs.filter((d) => d && typeof d.code === 'string' && Array.isArray(d.lines)).map((d) => {

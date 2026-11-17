@@ -717,3 +717,10 @@ body.screen-mode > *:not(#screen):not(.live-bar):not(.live-panel) { visibility: 
 .ns-cats { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin: 6px 0; font-size: 14px; }
 .ns-cats .sl { width: 100%; font-size: 12px; color: var(--muted); }
 .ns-cats .coll-item { display: inline-flex; gap: 6px; align-items: center; }
+
+/* Directo: máximo de caracteres (solo el líder) */
+.live-max { display: grid; gap: 6px; }
+.live-max[hidden] { display: none; }
+.lm-ctl { display: flex; align-items: center; gap: 10px; }
+.lm-ctl .pill { min-width: 40px; font-size: 18px; font-weight: 700; }
+.lm-ctl b { min-width: 120px; text-align: center; }

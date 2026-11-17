@@ -56,6 +56,7 @@
         if (at < 0) doc.songs.push(ns); else doc.songs.splice(at + 1, 0, ns);
         break;
       }
+      case 'settings': doc.settings = doc.settings || {}; doc.settings.maxChars = r.maxChars; break;
       case 'listCats': (doc.lists || []).forEach((l) => { if (l.id === r.list) l.cats = r.cats.slice(); }); break;
       case 'sel': doc.selections = doc.selections || {}; delete doc.selection; doc.selections[r.list] = r.codes.slice(); break;
       case 'addCat': doc.customCats = doc.customCats || []; if (!doc.customCats.includes(r.name)) doc.customCats.push(r.name); break;
@@ -119,6 +120,7 @@
     p.notes.forEach((x) => ops.push({ op: 'note', code: x.code, text: x.text }));
     p.cats.forEach((x) => ops.push({ op: 'cats', code: x.code, categories: x.categories }));
     p.delCats.forEach((name) => ops.push({ op: 'delCat', name }));
+    if (p.settings && typeof p.settings.maxChars === 'number') ops.push({ op: 'settings', maxChars: p.settings.maxChars });
     if (p.sel) Object.entries(p.sel).forEach(([list, codes]) => ops.push({ op: 'sel', list, codes }));
     if (!ops.length) return;
     st.busy = true;
@@ -128,7 +130,7 @@
       for (const op of ops) {
         const r = await post(Object.assign({ by: st.by }, op));
         if (!r.ok && r.error === 'existe') { stale = true; continue; } // otro dispositivo la subió antes
-        if (!r.ok && r.error === 'operacion' && (op.op === 'sel' || op.op === 'listCats')) continue; // script aún sin esa operación: se guarda más tarde
+        if (!r.ok && r.error === 'operacion' && (op.op === 'sel' || op.op === 'listCats' || op.op === 'settings')) continue; // script aún sin esa operación: se guarda más tarde
         if (!r.ok) { handleError(r.error); failed = true; break; }
         applyOp(st.doc, op);
         if (r.rev !== rev() + 1) stale = true; // alguien más ha guardado entretanto
@@ -182,13 +184,13 @@
 
   function pendingCount() {
     const p = A.pending();
-    return p.addCats.length + p.delCats.length + p.songs.length + p.notes.length + p.cats.length + (p.sel ? Object.keys(p.sel).length : 0) + (p.newSongs ? p.newSongs.length : 0);
+    return p.addCats.length + p.delCats.length + p.songs.length + p.notes.length + p.cats.length + (p.sel ? Object.keys(p.sel).length : 0) + (p.newSongs ? p.newSongs.length : 0) + (p.settings ? 1 : 0);
   }
   function label() {
     const n = pendingCount();
     return n ? '⏳ Guardando ' + n + ' cambio(s) en Drive…' : '☁ Se guarda en Drive para todos';
   }
-  const OPS = { listCats: 'cambió las colecciones de', sel: 'cambió la selección', addSong: 'añadió', lists: 'reordenó las listas', song: 'editó', note: 'comentó', cats: 'cambió colecciones de', addCat: 'creó la colección', delCat: 'borró la colección', init: 'subió el cancionero' };
+  const OPS = { settings: 'cambió el máximo de caracteres', listCats: 'cambió las colecciones de', sel: 'cambió la selección', addSong: 'añadió', lists: 'reordenó las listas', song: 'editó', note: 'comentó', cats: 'cambió colecciones de', addCat: 'creó la colección', delCat: 'borró la colección', init: 'subió el cancionero' };
   function renderUi() {
     const ob = $('cloudOpen');
     if (ob) { ob.hidden = false; ob.textContent = st.ok === false ? '☁ Sin conexión' : '☁ Drive'; }
