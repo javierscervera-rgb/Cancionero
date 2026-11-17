@@ -103,3 +103,9 @@ Solo hay una versión del cancionero: la guardada en Google Drive (cuenta de la 
 - La lista de canciones es un panel que se desliza desde abajo: al abrir una canción se recoge (queda una pestaña abajo con la canción actual) y se vuelve a abrir deslizándola hacia arriba o tocándola. La cabecera no cambia.
 - El cancionero (lista de reproducción) se elige en un desplegable.
 - El buscador, el tamaño de letra y el abecedario se quedan fijos arriba al desplazar la lista (también en el ordenador).
+
+## Disposición
+
+- La página no se desplaza: solo la columna de canciones y la de la letra.
+- La letra y los acordes nunca se salen del ancho de la columna: cada acorde va pegado a su sílaba y, si la línea no cabe, salta a la siguiente con sus acordes.
+- En todos los tamaños el cancionero se elige en un desplegable, y la cabecera de la lista (cancionero, buscador, tamaño de letra y abecedario) queda siempre visible.

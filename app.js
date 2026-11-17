@@ -169,7 +169,7 @@
     box.querySelectorAll('[data-list]').forEach((b) => {
       b.onclick = () => {
         // en el móvil es un desplegable: la lista elegida lo abre o lo cierra
-        if (isMobile() && b.dataset.list === state.list) { box.classList.toggle('open'); return; }
+        if (b.dataset.list === state.list) { box.classList.toggle('open'); return; }
         box.classList.remove('open');
         setList(b.dataset.list);
       };
@@ -331,13 +331,21 @@
     // Párrafos fijos (bloques separados por líneas en blanco), iguales con o sin acordes
     const paras = s.paras.map((idxs) => {
       const out = [];
-      idxs.forEach((i) => {
+      idxs.forEach((i, k) => {
         const line = s.lines[i];
         if (s.chordFlags[i]) {
           if (state.lyricsOnly) return;
-          out.push('<span class="cl">' + C.transposeLine(line, shift, flats, state.notation)
-            .map((g) => g.chord ? `<b class="ch">${esc(g.text)}</b>` : esc(g.text)).join('') + '</span>');
+          const groups = C.transposeLine(line, shift, flats, state.notation);
+          // acordes encima de una línea de letra: van pegados a su sílaba (así pueden saltar de línea juntos)
+          const nx = idxs[k + 1];
+          if (nx !== undefined && !s.chordFlags[nx] && s.lines[nx].trim() && !isLabelLine(s.lines[nx])) {
+            out.push(pairHtml(groups, s.lines[nx]));
+            out.skip = nx;
+            return;
+          }
+          out.push('<span class="cl">' + groups.map((g) => g.chord ? `<b class="ch">${esc(g.text)}</b>` : esc(g.text)).join('') + '</span>');
         } else {
+          if (out.skip === i) return;
           out.push(isLabelLine(line) ? `<span class="lbl">${esc(line)}</span>` : esc(line));
         }
       });
@@ -347,7 +355,7 @@
     state.paraCount = paras.length;
     if (state.para !== null && state.para >= paras.length) state.para = null;
     $('sheet').innerHTML = paras.map((p, i) =>
-      `<pre class="para${i === state.para ? ' sel' : ''}" data-i="${i}" tabindex="0">${p.join('\n')}</pre>`).join('');
+      `<div class="para${i === state.para ? ' sel' : ''}" data-i="${i}" tabindex="0">${p.join('\n')}</div>`).join('');
     $('sheet').style.fontSize = state.font + 'px';
     fitSheet();
     if (state.para !== null) requestAnimationFrame(() => centerPara(state.para, false));
@@ -385,22 +393,64 @@
   const notify = (why) => listeners.forEach((fn) => { try { fn(why); } catch (e) { /* ignorar */ } });
 
   // Al emitir: la partitura se ajusta al ancho de la pantalla (sin scroll horizontal)
+  // ---------- Línea de acordes + línea de letra que se pueden partir sin descolocar los acordes ----------
+  const MFONT = '"Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif';
+  const mctx = document.createElement('canvas').getContext('2d');
+  const wReg = (t) => { mctx.font = '16px ' + MFONT; return mctx.measureText(t).width; };
+  const wBold = (t) => { mctx.font = '600 16px ' + MFONT; return mctx.measureText(t).width; };
+  function pairHtml(groups, lyric) {
+    lyric = lyric.replace(/\s+$/, '');
+    // posición (en píxeles) de cada acorde en su línea → sílaba de la letra que tiene debajo
+    const pre = [0];
+    for (let j = 0; j < lyric.length; j++) pre.push(pre[j] + wReg(lyric[j]));
+    const chords = [];
+    let x = 0;
+    groups.forEach((g) => {
+      if (g.chord) {
+        let at = lyric.length;
+        if (x <= pre[lyric.length] + 2) {
+          at = 0;
+          for (let j = 1; j <= lyric.length; j++) if (Math.abs(pre[j] - x) < Math.abs(pre[at] - x)) at = j;
+          if (at === lyric.length && x < pre[lyric.length] - 1) at = lyric.length - 1;
+        }
+        const prev = chords[chords.length - 1];
+        if (prev && prev.at === at) prev.text += ' ' + g.text; else chords.push({ at, text: g.text });
+        x += wBold(g.text);
+      } else x += wReg(g.text);
+    });
+    // el acorde solo ocupa ancho propio si chocaría con el siguiente; si no, vuela sobre la letra
+    chords.forEach((c, j) => {
+      const nx = chords[j + 1];
+      const room = nx ? pre[Math.min(nx.at, lyric.length)] - pre[Math.min(c.at, lyric.length)] : Infinity;
+      const need = wBold(c.text) + 6;
+      c.min = need > room ? (need / 16).toFixed(2) : 0;
+    });
+    const unit = (c, t) => `<span class="u"${c.min ? ` style="min-width:${c.min}em"` : ''}><b class="ch">${esc(c.text)}</b>${esc(t)}</span>`;
+    let html = '';
+    const re = /(\s+)|(\S+)/g;
+    let m;
+    while ((m = re.exec(lyric))) {
+      const a = m.index, b = a + m[0].length;
+      const inside = chords.filter((c) => c.at >= a && c.at < b);
+      if (!inside.length) { html += m[1] ? m[0] : `<span class="w">${esc(m[0])}</span>`; continue; }
+      const cuts = [a].concat(inside.map((c) => c.at).filter((p) => p > a), [b]);
+      let w = '';
+      for (let j = 0; j < cuts.length - 1; j++) {
+        const c = inside.find((q) => q.at === cuts[j]);
+        const t = lyric.slice(cuts[j], cuts[j + 1]);
+        w += c ? unit(c, t) : esc(t);
+      }
+      html += `<span class="w">${w}</span>`;
+    }
+    chords.filter((c) => c.at >= lyric.length).forEach((c) => { html += ' ' + `<span class="w">${unit(c, '')}</span>`; });
+    return `<span class="pair">${html}</span>`;
+  }
+
   function fitSheet() {
     const sh = $('sheet');
-    if (!sh) return;
-    sh.style.fontSize = state.font + 'px';
-    if (!document.body.classList.contains('emitting') || $('song').hidden) return;
-    // sin scroll horizontal: solo se reduce el bloque que no cabe a lo ancho; el resto mantiene el tamaño elegido
-    const avail = sh.clientWidth;
-    [...sh.children].forEach((el) => {
-      el.style.fontSize = '';
-      let size = state.font;
-      for (let i = 0; i < 4 && el.scrollWidth > avail + 1 && size > 9; i++) {
-        size = Math.max(9, Math.floor(size * avail / el.scrollWidth * 10) / 10);
-        el.style.fontSize = size + 'px';
-      }
-    });
+    if (sh) sh.style.fontSize = state.font + 'px';
   }
+
   window.addEventListener('resize', () => fitSheet());
 
   // ---------- Párrafos: seleccionar uno lo centra en la pantalla ----------
@@ -408,12 +458,14 @@
     const t = document.querySelector('.top'), b = document.querySelector('.chipbar');
     return (t ? t.offsetHeight : 0) + (b ? b.offsetHeight : 0);
   }
+  // la canción se desplaza dentro de su columna (la página no tiene scroll)
   function centerPara(i, smooth) {
     const el = $('sheet').querySelector(`.para[data-i="${i}"]`);
     if (!el) return;
-    const r = el.getBoundingClientRect(), top = topOffset(), avail = window.innerHeight - top;
-    let y = window.scrollY + r.top - top - Math.max(12, (avail - r.height) / 2);
-    window.scrollTo({ top: Math.max(0, y), behavior: smooth === false ? 'auto' : 'smooth' });
+    const sc = $('content');
+    const r = el.getBoundingClientRect(), box = sc.getBoundingClientRect(), avail = sc.clientHeight;
+    const y = sc.scrollTop + r.top - box.top - Math.max(12, (avail - r.height) / 2);
+    sc.scrollTo({ top: Math.max(0, y), behavior: smooth === false ? 'auto' : 'smooth' });
   }
   function selectPara(i, fromSync) {
     if (i !== null && (!Number.isInteger(i) || i < 0 || i >= state.paraCount)) return;
@@ -534,7 +586,7 @@
     renderSheet();
     renderList();
     notifyView();
-    window.scrollTo(0, 0);
+    $('content').scrollTop = 0;
     const a = document.querySelector('.song-list a.active');
     if (a && a.scrollIntoView) a.scrollIntoView({ block: 'nearest' });
   }
@@ -843,12 +895,12 @@
       if (!cur) { const h = decodeURIComponent(location.hash.replace(/^#\/?/, '')); if (h && SONGS.some((x) => x.code === h)) showSong(h); }
       else if (!SONGS.includes(cur)) location.hash = '';
       else if (cur && sig(cur) !== before) {
-        const y = window.scrollY, para = state.para;
+        const y = $('content').scrollTop, para = state.para;
         showSong(cur.code);
-        if (para !== null && para < state.paraCount) selectPara(para, true); else window.scrollTo(0, y);
+        if (para !== null && para < state.paraCount) selectPara(para, true); else $('content').scrollTop = y;
       }
     },
-    refreshTags() { if (state.current) { const y = window.scrollY; showSong(state.current.code); window.scrollTo(0, y); } }
+    refreshTags() { if (state.current) { const y = $('content').scrollTop; showSong(state.current.code); $('content').scrollTop = y; } }
   };
 
   // ---------- Eventos ----------

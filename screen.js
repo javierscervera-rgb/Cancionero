@@ -147,6 +147,7 @@
   function open() {
     on = true; el.hidden = false;
     document.body.classList.add('screen-mode');
+    document.documentElement.classList.add('screen-on');
     wake(); render();
   }
   function close() {
@@ -154,6 +155,7 @@
     setClean(false);
     on = false; el.hidden = true;
     document.body.classList.remove('screen-mode');
+    document.documentElement.classList.remove('screen-on');
     const i = A.para();
     if (i !== null) A.selectPara(i); // recoloca el párrafo en la vista normal
   }

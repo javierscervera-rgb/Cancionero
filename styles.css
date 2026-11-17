@@ -64,10 +64,10 @@ button, select, input { font: inherit; color: inherit; }
 .chipbar .chip.on { background: var(--accent); color: #fff; }
 
 /* Layout */
-.layout { position: relative; display: grid; grid-template-columns: var(--sbw, 320px) 1fr; min-height: calc(100vh - var(--top-h)); }
+.layout { position: relative; display: grid; grid-template-columns: var(--sbw, 320px) 1fr; height: calc(100vh - var(--top-h)); height: calc(100dvh - var(--top-h)); }
 .sidebar {
-  position: sticky; top: var(--top-h); height: calc(100vh - var(--top-h)); overflow-y: auto;
-  border-right: 1px solid var(--line); background: var(--panel); padding: 14px 10px 30px;
+  position: relative; height: 100%; overflow-y: auto; overscroll-behavior: contain;
+  border-right: 1px solid var(--line); background: var(--panel); padding: 0 10px 30px;
 }
 .search-wrap { margin-bottom: 8px; display: flex; gap: 6px; align-items: stretch; }
 .search-wrap input { flex: 1; min-width: 0; }
@@ -231,10 +231,15 @@ body.tb-collapsed .content { padding-right: 40px; }
 /* Párrafos seleccionables */
 .sheet { white-space: normal; }
 .sheet .para {
-  font: inherit; white-space: pre; margin: 0 0 6px -12px; padding: 8px 12px; border-radius: 12px;
+  font: inherit; white-space: pre-wrap; overflow-wrap: break-word; margin: 0 0 6px -12px; padding: 8px 12px; border-radius: 12px;
   border-left: 3px solid transparent; cursor: pointer; transition: background .25s, border-color .25s;
-  width: max-content; min-width: calc(100% + 12px); outline: none;
+  width: auto; max-width: calc(100% + 12px); outline: none;
 }
+/* Acorde + sílaba juntos: si la línea no cabe, salta entera con sus acordes */
+.sheet .w { white-space: nowrap; }
+.sheet .u { display: inline-block; position: relative; padding-top: 1.45em; white-space: pre; }
+.sheet .u > .ch { position: absolute; left: 0; top: 0; white-space: nowrap; line-height: 1.45; }
+.sheet .cl { white-space: pre-wrap; }
 .sheet .para:hover { background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
 .sheet .para.sel { background: var(--accent-soft); border-left-color: var(--accent); }
 .sheet .para:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
@@ -622,3 +627,29 @@ body.sb-dragging * { cursor: col-resize !important; }
 .screen.idle .scr-line { opacity: .45; }
 .screen.clean .scr-line { display: none; }
 .scr-row .sg .sv { min-width: 28px; text-align: center; }
+
+/* ---------- Solo se desplazan las columnas (lista y canción); la página no ---------- */
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+.content { height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.sb-grip { position: absolute; top: 50%; margin-top: -22px; }
+@media print {
+  html, body { height: auto; overflow: visible; }
+  .layout { height: auto; }
+  .content { height: auto; overflow: visible; }
+}
+
+/* ---------- Cancioneros como desplegable y cabecera de la lista siempre visible ---------- */
+@media (min-width: 821px) {
+  .sb-top { display: block; position: sticky; top: 0; z-index: 5; background: var(--panel); margin: 0 -10px; padding: 14px 10px 4px; box-shadow: 0 6px 10px -10px rgba(0,0,0,.35); }
+  .list-head { position: static; margin: 0; padding: 0; background: none; }
+}
+.lists { gap: 4px; margin-bottom: 8px; }
+.lists:not(.open) .list-item:not(.on) { display: none; }
+.list-item.on { grid-template-columns: 30px 1fr auto 18px; }
+.list-item.on::after { content: '▾'; color: var(--accent); font-size: 14px; transition: transform .2s; }
+.lists.open .list-item.on::after { transform: rotate(180deg); }
+
+/* ---------- Pantalla completa: no se ve nada de la página que hay detrás ---------- */
+html.screen-on, html.screen-on body { background: #000; }
+body.screen-mode > *:not(#screen):not(.live-bar):not(.live-panel) { visibility: hidden; }
+.screen { width: 100%; min-height: 100%; }
