@@ -56,6 +56,7 @@
         if (at < 0) doc.songs.push(ns); else doc.songs.splice(at + 1, 0, ns);
         break;
       }
+      case 'sel': doc.selection = r.codes.slice(); break;
       case 'addCat': doc.customCats = doc.customCats || []; if (!doc.customCats.includes(r.name)) doc.customCats.push(r.name); break;
       case 'delCat':
         doc.customCats = (doc.customCats || []).filter((c) => c !== r.name);
@@ -107,6 +108,7 @@
     p.notes.forEach((x) => ops.push({ op: 'note', code: x.code, text: x.text }));
     p.cats.forEach((x) => ops.push({ op: 'cats', code: x.code, categories: x.categories }));
     p.delCats.forEach((name) => ops.push({ op: 'delCat', name }));
+    if (p.sel) ops.push({ op: 'sel', codes: p.sel });
     if (!ops.length) return;
     st.busy = true;
     setStatus('Guardando en Drive…', null);
@@ -115,6 +117,7 @@
       for (const op of ops) {
         const r = await post(Object.assign({ by: st.by }, op));
         if (!r.ok && r.error === 'existe') { stale = true; continue; } // otro dispositivo la subió antes
+        if (!r.ok && r.error === 'operacion' && op.op === 'sel') continue; // script aún sin «Selección»: se guarda más tarde
         if (!r.ok) { handleError(r.error); failed = true; break; }
         applyOp(st.doc, op);
         if (r.rev !== rev() + 1) stale = true; // alguien más ha guardado entretanto
@@ -168,13 +171,13 @@
 
   function pendingCount() {
     const p = A.pending();
-    return p.addCats.length + p.delCats.length + p.songs.length + p.notes.length + p.cats.length;
+    return p.addCats.length + p.delCats.length + p.songs.length + p.notes.length + p.cats.length + (p.sel ? 1 : 0);
   }
   function label() {
     const n = pendingCount();
     return n ? '⏳ Guardando ' + n + ' cambio(s) en Drive…' : '☁ Se guarda en Drive para todos';
   }
-  const OPS = { song: 'editó', note: 'comentó', cats: 'cambió colecciones de', addCat: 'creó la colección', delCat: 'borró la colección', init: 'subió el cancionero' };
+  const OPS = { sel: 'cambió la selección', addSong: 'añadió', lists: 'reordenó las listas', song: 'editó', note: 'comentó', cats: 'cambió colecciones de', addCat: 'creó la colección', delCat: 'borró la colección', init: 'subió el cancionero' };
   function renderUi() {
     const ob = $('cloudOpen');
     if (ob) { ob.hidden = false; ob.textContent = st.ok === false ? '☁ Sin conexión' : '☁ Drive'; }

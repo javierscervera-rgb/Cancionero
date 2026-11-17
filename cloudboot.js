@@ -11,6 +11,7 @@
     window.SONGS = doc.songs;
     window.LISTS = doc.lists;
     window.CLOUD_CATS = Array.isArray(doc.customCats) ? doc.customCats : [];
+    window.CLOUD_SEL = Array.isArray(doc.selection) ? doc.selection : [];
   } else doc = null;
   window.CLOUD_BOOT = doc;
 })();

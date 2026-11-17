@@ -145,6 +145,13 @@ function apply_(doc, r) {
       Object.keys(byId).forEach(function (id) { nextL.push(byId[id]); });
       doc.lists = nextL;
       return null;
+    case 'sel':
+      // selección compartida: lista ordenada de códigos de canciones
+      if (!Array.isArray(r.codes)) return 'seleccion';
+      var seen = {}, out = [];
+      r.codes.forEach(function (c) { if (typeof c === 'string' && !seen[c] && find_(doc, c)) { seen[c] = 1; out.push(c); } });
+      doc.selection = out.slice(0, 300);
+      return null;
     case 'addCat':
       var n = str_(r.name, 40).trim();
       if (!n) return 'nombre';

@@ -21,6 +21,8 @@
     blank: false,          // pantalla de presentación en negro (sin letra)
     query: '',
     letter: null,          // filtro por inicial del título (A, B… o #)
+    tab: store.get('tab', 'all'), // pestaña de la lista: 'sel' (Selección) o 'all' (Todas)
+    sorting: false,        // ordenando la selección
     listFont: store.get('listFont2', 19),
     current: null
   };
@@ -34,6 +36,10 @@
   let CATS = LISTS.flatMap((l) => l.cats || []); // colecciones de todos los cancioneros
   let UPPER_CATS = listById('meriba').cats || [];
   let baseCustom = (window.CLOUD_CATS || []).slice(); // colecciones creadas por los editores (compartidas)
+  // Selección (compartida en Drive): canciones elegidas, en orden. selLocal = cambio aún no guardado
+  let baseSel = (window.CLOUD_SEL || []).slice();
+  let selLocal = store.get('selPending', null);
+  if (!Array.isArray(selLocal)) selLocal = null;
   // Colecciones: las del cancionero + las creadas en este dispositivo; pertenencia editable por canción
   let coll = store.get('collections', { custom: [], songs: {} });
   if (!coll || !Array.isArray(coll.custom) || typeof coll.songs !== 'object') coll = { custom: [], songs: {} };
@@ -119,6 +125,7 @@
     });
     Object.keys(coll.songs).forEach((code) => { if (!SONGS.some((x) => x.code === code)) delete coll.songs[code]; });
     if (JSON.stringify(coll) !== before) store.set('collections', coll);
+    if (selLocal && JSON.stringify(selLocal) === JSON.stringify(baseSel)) { selLocal = null; store.set('selPending', null); }
   }
   reconcile();
   document.body.classList.add('can-edit'); // cualquiera puede editar (se guarda en Drive)
@@ -295,15 +302,68 @@
     window.addEventListener('resize', () => setSbw(store.get('sbw', SBW), false));
   })();
 
+  // ---------- Selección ----------
+  const selCodes = () => (selLocal || baseSel).filter((c) => SONGS.some((s) => s.code === c));
+  const selSongs = () => selCodes().map((c) => SONGS.find((s) => s.code === c));
+  const inSel = (code) => selCodes().includes(code);
+  function setSelection(codes) {
+    selLocal = codes.slice();
+    store.set('selPending', selLocal);
+    if (!selLocal.length && state.tab === 'sel') setTab('all');
+    localChanged();
+    renderList();
+    if (state.current) { const ls = navList(state.current), li = ls.indexOf(state.current); updatePager(ls, li); }
+  }
+  function toggleSel(code) {
+    const cur = selCodes();
+    setSelection(cur.includes(code) ? cur.filter((c) => c !== code) : cur.concat(code));
+  }
+  function setTab(t) {
+    state.tab = t === 'sel' ? 'sel' : 'all';
+    store.set('tab', state.tab);
+    if (state.tab !== 'sel') state.sorting = false;
+    renderList();
+    $('sidebar').scrollTop = 0;
+  }
+  // canciones por las que se avanza con ← → en la canción abierta
+  function navList(s) {
+    if (state.tab === 'sel' && inSel(s.code)) return selSongs();
+    return listSongs(s.list);
+  }
+  function renderSelUi() {
+    const n = selCodes().length;
+    if (!n && state.tab === 'sel') state.tab = 'all';
+    $('selTabs').hidden = !n;
+    $('tabSel').textContent = 'Selección (' + n + ')';
+    $('tabSel').classList.toggle('on', state.tab === 'sel');
+    $('tabAll').classList.toggle('on', state.tab !== 'sel');
+    $('selBar').hidden = state.tab !== 'sel' || !n;
+    $('selSort').setAttribute('aria-pressed', String(!!state.sorting));
+    $('selSort').textContent = state.sorting ? '✓ Hecho' : '↕ Ordenar';
+    $('selHint').textContent = state.sorting ? 'Arrastra ≡ arriba o abajo para cambiar el orden.' : 'Desliza una canción a la derecha para quitarla.';
+    $('sidebar').classList.toggle('sorting', !!state.sorting);
+  }
+
   function renderList() {
     renderAbc();
+    renderSelUi();
     const list = $('songList');
-    const items = filtered();
+    const sel = state.tab === 'sel';
+    let items = filtered();
+    if (sel) {
+      const q = fold(state.query.trim());
+      items = selSongs().filter((s) => !q || s.searchText.includes(q) || s.code.toLowerCase().includes(q));
+    }
+    const chosen = new Set(selCodes());
     list.innerHTML = items.map((s) =>
-      `<li><a href="#${s.code}" class="${state.current === s ? 'active' : ''}">` +
+      `<li data-code="${s.code}"><a href="#${s.code}" draggable="false" class="${state.current === s ? 'active' : ''}${chosen.has(s.code) ? ' sel' : ''}">` +
       `<span class="code">${s.code}</span><span class="t">${esc(s.title)}</span>` +
-      `<span class="k">${keyName(s, state.shifts[s.code] || 0)}</span></a></li>`).join('') ||
- `<li class="empty">${state.letter ? 'No hay canciones que empiecen por esa letra aquí.' : state.category && !state.query ? 'Esta colección está vacía. Abre una canción y pulsa «🏷 Colecciones» para añadirla.' : 'No hay canciones que coincidan.'}</li>`;
+      `<span class="k">${keyName(s, state.shifts[s.code] || 0)}</span>` +
+      (sel && state.sorting ? '<span class="drag-h" aria-label="Arrastrar para ordenar">≡</span>' : '') + '</a></li>').join('') ||
+      `<li class="empty">${sel ? 'No hay canciones seleccionadas que coincidan.'
+        : state.letter ? 'No hay canciones que empiecen por esa letra aquí.'
+        : state.category && !state.query ? 'Esta colección está vacía. Abre una canción y pulsa «🏷 Colecciones» para añadirla.'
+        : 'No hay canciones que coincidan.'}</li>`;
   }
 
   // ---------- Canción ----------
@@ -550,6 +610,13 @@
     editNote();
   });
 
+  function updatePager(ls, li) {
+    const prev = li >= 0 ? ls[li - 1] : null, next = li >= 0 ? ls[li + 1] : null;
+    $('prevLink').style.visibility = prev ? 'visible' : 'hidden';
+    $('nextLink').style.visibility = next ? 'visible' : 'hidden';
+    if (prev) { $('prevLink').href = '#' + prev.code; $('prevLink').textContent = '← ' + prev.title; }
+    if (next) { $('nextLink').href = '#' + next.code; $('nextLink').textContent = next.title + ' →'; }
+  }
   function showSong(code) {
     const s = SONGS.find((x) => x.code === code);
     document.body.classList.toggle('reading', !!s);
@@ -577,12 +644,8 @@
       (s.edited ? '<span class="tag edited" title="Se está guardando en Drive; si no hay conexión, se subirá en cuanto vuelva">⏳ Guardando en Drive…</span>' : '');
     document.title = s.title + ' · Cancionero';
     if (s.list !== state.list) setList(s.list, true);
-    const ls = listSongs(s.list), li = ls.indexOf(s);
-    const prev = ls[li - 1], next = ls[li + 1];
-    $('prevLink').style.visibility = prev ? 'visible' : 'hidden';
-    $('nextLink').style.visibility = next ? 'visible' : 'hidden';
-    if (prev) { $('prevLink').href = '#' + prev.code; $('prevLink').textContent = '← ' + prev.title; }
-    if (next) { $('nextLink').href = '#' + next.code; $('nextLink').textContent = next.title + ' →'; }
+    const ls = navList(s);
+    updatePager(ls, ls.indexOf(s));
     renderSheet();
     renderList();
     notifyView();
@@ -601,6 +664,84 @@
     syncHash = null;
     if (!fromSync) notify('song');
   }
+
+  // ---------- Selección: pestañas, deslizar a la derecha y ordenar arrastrando ----------
+  $('tabSel').onclick = () => setTab('sel');
+  $('tabAll').onclick = () => setTab('all');
+  $('selSort').onclick = () => { state.sorting = !state.sorting; renderList(); };
+  (function () {
+    const list = $('songList');
+    let g = null, suppress = false;
+    const SWIPE = 70;
+    list.addEventListener('pointerdown', (e) => {
+      const a = e.target.closest('a');
+      if (!a || e.button > 0) return;
+      const li = a.parentElement;
+      if (e.target.closest('.drag-h')) {
+        // ordenar: arrastrar el asa arriba o abajo
+        g = { mode: 'sort', li, y0: e.clientY, x0: e.clientX, id: e.pointerId };
+        li.classList.add('dragging');
+        list.setPointerCapture(e.pointerId);
+        e.preventDefault();
+        return;
+      }
+      if (state.sorting) return;
+      g = { mode: 'maybe', a, li, x0: e.clientX, y0: e.clientY, id: e.pointerId };
+    });
+    list.addEventListener('pointermove', (e) => {
+      if (!g || e.pointerId !== g.id) return;
+      const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
+      if (g.mode === 'sort') {
+        g.li.style.transform = 'translateY(' + dy + 'px)';
+        // auto-desplazamiento cerca de los bordes de la lista
+        const sb = $('sidebar').getBoundingClientRect();
+        if (e.clientY > sb.bottom - 40) $('sidebar').scrollTop += 8;
+        else if (e.clientY < sb.top + 140) $('sidebar').scrollTop -= 8;
+        return;
+      }
+      if (g.mode === 'maybe') {
+        if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { g = null; return; } // desplazamiento vertical
+        if (dx > 10 && dx > Math.abs(dy)) { g.mode = 'swipe'; list.setPointerCapture(e.pointerId); }
+      }
+      if (g.mode === 'swipe') {
+        const d = Math.max(0, Math.min(dx, 120));
+        g.a.style.transform = 'translateX(' + d + 'px)';
+        g.a.classList.toggle('swipe-ok', dx >= SWIPE);
+        e.preventDefault();
+      }
+    });
+    const end = (e) => {
+      if (!g || (e && e.pointerId !== g.id)) return;
+      const cur = g; g = null;
+      if (cur.mode === 'swipe') {
+        suppress = true; setTimeout(() => { suppress = false; }, 350);
+        cur.a.style.transform = ''; cur.a.classList.remove('swipe-ok');
+        if (e && e.clientX - cur.x0 >= SWIPE) toggleSel(cur.li.dataset.code);
+      } else if (cur.mode === 'sort') {
+        suppress = true; setTimeout(() => { suppress = false; }, 350);
+        cur.li.classList.remove('dragging'); cur.li.style.transform = '';
+        // nueva posición según dónde se ha soltado
+        const lis = [...list.querySelectorAll('li[data-code]')].filter((x) => x !== cur.li);
+        const y = e ? e.clientY : 0;
+        let at = lis.findIndex((x) => { const r = x.getBoundingClientRect(); return y < r.top + r.height / 2; });
+        if (at < 0) at = lis.length;
+        const order = lis.map((x) => x.dataset.code);
+        order.splice(at, 0, cur.li.dataset.code);
+        // conserva las seleccionadas que no se ven (filtradas por la búsqueda)
+        const all = selCodes(), shown = new Set(order);
+        const rest = all.filter((c) => !shown.has(c));
+        setSelection(order.concat(rest));
+      }
+    };
+    list.addEventListener('pointerup', end);
+    list.addEventListener('pointercancel', (e) => {
+      if (g && g.mode === 'swipe') { g.a.style.transform = ''; g.a.classList.remove('swipe-ok'); }
+      if (g && g.mode === 'sort') { g.li.classList.remove('dragging'); g.li.style.transform = ''; }
+      g = null;
+    });
+    // tras deslizar u ordenar no se abre la canción
+    list.addEventListener('click', (e) => { if (suppress || state.sorting) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+  })();
 
   // ---------- Móvil: lista de canciones en un panel deslizable desde abajo ----------
   const mq = matchMedia('(max-width: 820px)');
@@ -748,6 +889,8 @@
       notify('edit');
     },
     exportEdits: () => ({ formato: 'cancionero-meriba', version: 3, canciones: JSON.parse(JSON.stringify(edits)), colecciones: JSON.parse(JSON.stringify(coll)), comentarios: JSON.parse(JSON.stringify(notes)) }),
+    toggleSel: (code) => toggleSel(code),
+    selection: () => selCodes(),
     hasChanges: () => Object.keys(edits).length > 0 || coll.custom.length > 0 || coll.removed.length > 0 || Object.keys(coll.songs).length > 0 || Object.keys(notes).length > 0,
     importEdits(obj) {
       if (!obj || typeof obj !== 'object') return 0;
@@ -839,7 +982,7 @@
     },
     song(d) {
       if (!state.current) return;
-      const ls = listSongs(state.current.list);
+      const ls = navList(state.current);
       const t = ls[ls.indexOf(state.current) + d];
       if (t) location.hash = '#' + t.code;
     },
@@ -852,6 +995,7 @@
       Object.entries(edits).forEach(([code, e]) => out.songs.push({ code, title: e.title, lines: e.lines.slice() }));
       Object.entries(notes).forEach(([code, text]) => out.notes.push({ code, text }));
       Object.entries(coll.songs).forEach(([code, list]) => out.cats.push({ code, categories: list.slice() }));
+      out.sel = selLocal ? selLocal.slice() : null;
       return out;
     },
     // El cancionero tal como viene de la fuente (sin cambios locales), para subirlo la primera vez
@@ -859,6 +1003,7 @@
       return {
         lists: JSON.parse(JSON.stringify(LISTS)),
         customCats: baseCustom.slice(),
+        selection: baseSel.slice(),
         songs: SONGS.map((s) => {
           const o = { code: s.code, title: ORIG[s.code].title, lines: ORIG[s.code].lines.slice(), variants: s.variants || [], categories: (s.baseCats || []).slice(), list: s.list };
           if (s.comment) o.comment = s.comment;
@@ -876,6 +1021,7 @@
       CATS = LISTS.flatMap((l) => l.cats || []);
       UPPER_CATS = listById('meriba').cats || [];
       baseCustom = Array.isArray(doc.customCats) ? doc.customCats.slice() : [];
+      baseSel = Array.isArray(doc.selection) ? doc.selection.slice() : [];
       const byCode = {};
       SONGS.forEach((s) => { byCode[s.code] = s; });
       const next = doc.songs.filter((d) => d && typeof d.code === 'string' && Array.isArray(d.lines)).map((d) => {

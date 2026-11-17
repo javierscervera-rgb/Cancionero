@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Cancionero</title>
 <meta name="description" content="Cancioneros con acordes, transposición de tono, modo pantalla y directo">
-<link rel="stylesheet" href="styles.css?v=202611170902">
+<link rel="stylesheet" href="styles.css?v=202611170916">
 </head>
 <body>
 <header class="top">
@@ -38,6 +38,14 @@
         <button class="lt-btn" id="listFontUp" title="Letra del índice más grande" aria-label="Letra del índice más grande">A<sup>+</sup></button>
         <button class="lt-btn abc" id="abcBtn" aria-expanded="false" aria-controls="abcGrid" title="Buscar por la letra con que empieza el título">ABC</button>
       </div>
+    </div>
+    <div class="sel-tabs" id="selTabs" hidden>
+      <button class="sel-tab" data-tab="sel" id="tabSel">Selección</button>
+      <button class="sel-tab" data-tab="all" id="tabAll">Todas</button>
+    </div>
+    <div class="sel-bar" id="selBar" hidden>
+      <span class="muted" id="selHint">Desliza una canción a la derecha para quitarla.</span>
+      <button class="sel-sort" id="selSort" aria-pressed="false" title="Ordenar la selección arrastrando las canciones">↕ Ordenar</button>
     </div>
     <div class="abc-grid" id="abcGrid" hidden></div>
     <div class="letter-pill" id="letterPill" hidden></div>
@@ -100,17 +108,17 @@
   </div>
 </nav>
 
-<script src="songs.js?v=202611170902"></script>
-<script src="songs-parroquia.js?v=202611170902"></script>
-<script src="songs-adoracion.js?v=202611170902"></script>
-<script src="cloudboot.js?v=202611170902"></script>
-<script src="chords.js?v=202611170902"></script>
-<script src="app.js?v=202611170902"></script>
-<script src="live.js?v=202611170902"></script>
-<script src="screen.js?v=202611170902"></script>
-<script src="chordeditor.js?v=202611170902"></script>
-<script src="editor.js?v=202611170902"></script>
-<script src="collections.js?v=202611170902"></script>
-<script src="cloud.js?v=202611170902"></script>
+<script src="songs.js?v=202611170916"></script>
+<script src="songs-parroquia.js?v=202611170916"></script>
+<script src="songs-adoracion.js?v=202611170916"></script>
+<script src="cloudboot.js?v=202611170916"></script>
+<script src="chords.js?v=202611170916"></script>
+<script src="app.js?v=202611170916"></script>
+<script src="live.js?v=202611170916"></script>
+<script src="screen.js?v=202611170916"></script>
+<script src="chordeditor.js?v=202611170916"></script>
+<script src="editor.js?v=202611170916"></script>
+<script src="collections.js?v=202611170916"></script>
+<script src="cloud.js?v=202611170916"></script>
 </body>
 </html>

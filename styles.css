@@ -653,3 +653,25 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 html.screen-on, html.screen-on body { background: #000; }
 body.screen-mode > *:not(#screen):not(.live-bar):not(.live-panel) { visibility: hidden; }
 .screen { width: 100%; min-height: 100%; }
+
+/* ---------- Selección ---------- */
+.song-list a { position: relative; touch-action: pan-y; -webkit-user-drag: none; transition: transform .18s ease, background .2s; user-select: none; -webkit-user-select: none; }
+.song-list a.sel::before {
+  content: ''; position: absolute; left: 5px; top: 50%; margin-top: -5px; width: 10px; height: 10px; border-radius: 50%;
+  background: #d93a2b; box-shadow: 0 0 0 2px var(--bg);
+}
+.song-list a.sel { padding-left: 20px; }
+.song-list a.swipe-ok { background: color-mix(in srgb, #d93a2b 14%, var(--bg)); border-color: #d93a2b; }
+.sel-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 2px 0 8px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.sel-tabs[hidden] { display: none; }
+.sel-tab { border: 0; background: var(--bg); color: var(--ink); padding: 8px 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.sel-tab + .sel-tab { border-left: 1px solid var(--line); }
+.sel-tab.on { background: var(--accent); color: #fff; }
+.sel-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 2px 8px; font-size: 12.5px; }
+.sel-bar[hidden] { display: none; }
+.sel-sort { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.sel-sort[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.drag-h { position: absolute; right: 0; top: 0; bottom: 0; width: 46px; display: grid; place-items: center; font-size: 22px; color: var(--muted); cursor: grab; touch-action: none; background: linear-gradient(90deg, transparent, var(--bg) 30%); border-radius: 0 14px 14px 0; }
+.sidebar.sorting .song-list .k { visibility: hidden; }
+.song-list li.dragging { position: relative; z-index: 3; }
+.song-list li.dragging a { box-shadow: 0 10px 24px -10px rgba(0,0,0,.45); border-color: var(--accent); }

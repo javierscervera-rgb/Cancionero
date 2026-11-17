@@ -109,3 +109,10 @@ Solo hay una versión del cancionero: la guardada en Google Drive (cuenta de la 
 - La página no se desplaza: solo la columna de canciones y la de la letra.
 - La letra y los acordes nunca se salen del ancho de la columna: cada acorde va pegado a su sílaba y, si la línea no cabe, salta a la siguiente con sus acordes.
 - En todos los tamaños el cancionero se elige en un desplegable, y la cabecera de la lista (cancionero, buscador, tamaño de letra y abecedario) queda siempre visible.
+
+## Selección
+
+- Desliza una canción hacia la derecha para seleccionarla (aparece un punto rojo a la izquierda); vuelve a deslizarla para quitarla, en cualquier pestaña.
+- Con alguna canción seleccionada aparecen las pestañas «Selección» y «Todas» bajo el buscador. La selección puede mezclar canciones de los tres cancioneros.
+- En «Selección», «↕ Ordenar» muestra un asa (≡) para arrastrar las canciones arriba o abajo. Al abrir una canción desde ahí, anterior/siguiente siguen el orden de la selección.
+- La selección es una sola, compartida y guardada en Drive (operación `sel` del script).
