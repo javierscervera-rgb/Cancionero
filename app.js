@@ -684,8 +684,9 @@
     list.addEventListener('pointerdown', (e) => {
       const a = e.target.closest('a');
       if (!a || e.button > 0 || g) return;
+      stopFling();
       const li = a.parentElement;
-      if (e.target.closest('.drag-h')) {
+      if (e.target.closest('.drag-h') || state.sorting) {
         // ordenar: la pastilla sigue al dedo y las demás se apartan
         g = { mode: 'sort', li, id: e.pointerId, y: e.clientY, top: natTop(li) };
         g.y0 = e.clientY;
@@ -694,8 +695,7 @@
         e.preventDefault();
         return;
       }
-      if (state.sorting) return;
-      g = { mode: 'maybe', a, li, x0: e.clientX, y0: e.clientY, id: e.pointerId };
+      g = { mode: 'maybe', a, li, x0: e.clientX, y0: e.clientY, id: e.pointerId, touch: e.pointerType !== 'mouse', st0: sb.scrollTop, v: 0, t: performance.now(), ly: e.clientY };
     });
 
     list.addEventListener('pointermove', (e) => {
@@ -708,13 +708,24 @@
       }
       const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
       if (g.mode === 'maybe') {
-        if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx)) { g = null; return; } // desplazamiento vertical de la lista
-        if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        if (Math.hypot(dx, dy) < 7) return;
+        // cuenta como deslizar aunque el gesto vaya bastante inclinado (hasta ~55°)
+        if (Math.abs(dx) >= Math.abs(dy) * 0.7) {
           g.mode = 'swipe';
           list.setPointerCapture(e.pointerId);
           g.li.dataset.act = inSel(g.li.dataset.code) ? '✕ Quitar' : '● Seleccionar';
           g.li.classList.add('swiping'); sb.classList.add('gesturing');
-        } else return;
+        } else if (g.touch) {
+          g.mode = 'scroll'; // desplazamiento vertical de la lista (lo hace la web, con inercia)
+          list.setPointerCapture(e.pointerId);
+        } else { g = null; return; }
+      }
+      if (g.mode === 'scroll') {
+        e.preventDefault();
+        const now = performance.now(), dt = Math.max(1, now - g.t);
+        g.v = 0.8 * ((e.clientY - g.ly) / dt) + 0.2 * g.v; g.t = now; g.ly = e.clientY;
+        sb.scrollTop = g.st0 - dy;
+        return;
       }
       if (g.mode === 'swipe') {
         e.preventDefault();
@@ -755,6 +766,11 @@
       const cur = g; g = null;
       cancelAnimationFrame(raf);
       sb.classList.remove('gesturing');
+      if (cur.mode === 'scroll') {
+        quiet();
+        if (!cancel && performance.now() - cur.t < 80) fling(-cur.v * 16);
+        return;
+      }
       if (cur.mode === 'swipe') {
         quiet();
         const dx = e ? e.clientX - cur.x0 : 0;
@@ -778,7 +794,19 @@
     list.addEventListener('lostpointercapture', (e) => { if (e.target === list && g && g.mode !== 'maybe' && e.pointerId === g.id) setTimeout(() => finish(e, true), 0); });
     // tras deslizar u ordenar no se abre la canción
     list.addEventListener('click', (e) => { if (suppress || state.sorting) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
-    window.SelGesture = { active: () => !!g && g.mode !== 'maybe' };
+    // inercia al soltar después de desplazar la lista
+    let flingRaf = 0;
+    function fling(v) {
+      stopFling();
+      const stepF = () => {
+        if (Math.abs(v) < 0.4) return;
+        sb.scrollTop += v; v *= 0.95;
+        flingRaf = requestAnimationFrame(stepF);
+      };
+      flingRaf = requestAnimationFrame(stepF);
+    }
+    function stopFling() { cancelAnimationFrame(flingRaf); }
+    window.SelGesture = { active: () => !!g && g.mode !== 'maybe' && g.mode !== 'scroll' };
   })();
 
   // ---------- Móvil: lista de canciones en un panel deslizable desde abajo ----------

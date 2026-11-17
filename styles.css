@@ -689,3 +689,8 @@ body.screen-mode > *:not(#screen):not(.live-bar):not(.live-panel) { visibility: 
 .song-list li.dragging { z-index: 5; will-change: transform; }
 .sidebar.gesturing { scroll-behavior: auto; }
 .drag-h { touch-action: none; }
+
+/* Gestos táctiles en la lista: los decide la web (deslizar con tolerancia, desplazar con inercia) */
+@media (pointer: coarse) { .song-list a { touch-action: none; } }
+.sidebar.sorting .song-list a { touch-action: none; cursor: grab; }
+.sidebar.sorting .song-list a .t, .sidebar.sorting .song-list a .code { pointer-events: none; }
