@@ -117,3 +117,12 @@ Solo hay una versión del cancionero: la guardada en Google Drive (cuenta de la 
 - En «Selección», «↕ Ordenar» permite arrastrar cada canción (desde cualquier punto de la pastilla o desde el asa ≡) arriba o abajo; las demás se apartan mientras arrastras y no se abren ni se seleccionan.
 - En pantallas táctiles el desplazamiento de la lista lo hace la web (con inercia) para que el deslizar lateral sea tolerante: un gesto inclinado hasta ~55° cuenta como deslizar. Al abrir una canción desde ahí, anterior/siguiente siguen el orden de la selección.
 - Hay una selección por cancionero (Meribá, Parroquia y Adoración), compartida y guardada en Drive (`selections` en el archivo; operación `sel` del script con la lista).
+
+## Añadir canciones desde la web
+
+- La primera pastilla de la lista («＋ Añadir una canción», con borde discontinuo) abre un formulario: título, letra (con acordes opcionales en la línea de encima) y colecciones. La canción se añade al cancionero elegido con el siguiente código libre (p. ej. P129) y se guarda en Drive para todos.
+
+## Textos de la Misa
+
+- En el Cancionero Parroquia, la colección «⛪️Textos Misa» (la primera) contiene P120–P127: Credo apostólico, Credo Niceno, Primera lectura, Salmo responsorial, Segunda lectura, Evangelio, Gloria y «El Señor reciba…». Las lecturas largas están partidas en párrafos de unas pocas frases para proyectarlas.
+- Las colecciones oficiales nuevas que se añadan a los archivos `songs*.js` se suben solas a Drive (operación `listCats` del script).

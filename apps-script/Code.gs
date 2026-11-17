@@ -145,6 +145,14 @@ function apply_(doc, r) {
       Object.keys(byId).forEach(function (id) { nextL.push(byId[id]); });
       doc.lists = nextL;
       return null;
+    case 'listCats':
+      // colecciones oficiales de un cancionero (en orden): r.list, r.cats
+      var L = null;
+      doc.lists.forEach(function (l) { if (l.id === r.list) L = l; });
+      var nc = cats_(r.cats);
+      if (!L || !nc) return 'lista';
+      L.cats = nc;
+      return null;
     case 'sel':
       // selecciones compartidas, una por cancionero: doc.selections[lista] = [códigos en orden]
       if (!Array.isArray(r.codes)) return 'seleccion';

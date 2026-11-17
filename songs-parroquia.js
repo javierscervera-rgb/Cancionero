@@ -1,7 +1,7 @@
 // Generado a partir de «Cancionero parroquia – San Sebastián Mártir» (PDF).
 // Segundos acordes descartados; minúscula = acorde menor (lam -> LAm).
 window.LISTS = window.LISTS || [];
-window.LISTS.push({"id": "parroquia", "name": "Cancionero Parroquia", "sub": "San Sebastián Mártir", "cats": ["Adoración, comunión", "Aleluya", "Bendición agua", "Canciones entrada", "Cordero", "Espíritu Santo", "Gloria", "Kyrie Eleison", "Ofertorio", "Padrenuestro", "Santo", "Virgen María"]});
+window.LISTS.push({"id": "parroquia", "name": "Cancionero Parroquia", "sub": "San Sebastián Mártir", "cats": ["⛪️Textos Misa", "Adoración, comunión", "Aleluya", "Bendición agua", "Canciones entrada", "Cordero", "Espíritu Santo", "Gloria", "Kyrie Eleison", "Ofertorio", "Padrenuestro", "Santo", "Virgen María"]});
 window.SONGS.push(...[
  {
   "code": "P001",
@@ -4680,5 +4680,224 @@ window.SONGS.push(...[
    "Virgen María"
   ],
   "list": "parroquia"
- }
+ },
+{
+ "code": "P120",
+ "title": "⛪️ Credo apostólico",
+ "lines": [
+  "Creo en Dios Padre,",
+  "Todopoderoso,",
+  "Creador del cielo y de la tierra.",
+  "",
+  "Y en Jesucristo, su único Hijo,",
+  "Nuestro Señor, que fue concebido por obra y gracia del Espíritu Santo,",
+  "nació de Santa María Virgen,",
+  "",
+  "padeció bajo el poder de Poncio Pilato,",
+  "fue crucificado, muerto y sepultado,",
+  "descendió a los infiernos,",
+  "al tercer día resucitó entre los muertos,",
+  "",
+  "subió a los cielos y está sentado a la derecha de Dios Padre, Todopoderoso.",
+  "Desde allí vendrá a juzgar a vivos y a muertos.",
+  "",
+  "Creo en el Espíritu Santo,",
+  "la Santa Iglesia Católica,",
+  "la comunión de los santos,",
+  "el perdón de los pecados,",
+  "",
+  "la resurrección de la carne",
+  "y la vida eterna."
+ ],
+ "variants": [],
+ "categories": [
+  "⛪️Textos Misa"
+ ],
+ "list": "parroquia"
+},
+{
+ "code": "P121",
+ "title": "⛪️ Credo Niceno",
+ "lines": [
+  "Creo en un solo Dios, Padre todopoderoso,",
+  "Creador del cielo y de la tierra,",
+  "de todo lo visible y lo invisible.",
+  "",
+  "Creo en un solo Señor, Jesucristo, Hijo único de Dios,",
+  "nacido del Padre antes de todos los siglos:",
+  "",
+  "Dios de Dios, Luz de Luz,",
+  "Dios verdadero de Dios verdadero,",
+  "engendrado, no creado,",
+  "de la misma naturaleza del Padre,",
+  "por quien todo fue hecho;",
+  "",
+  "que por nosotros, los hombres,",
+  "y por nuestra salvación bajó del cielo,",
+  "y por obra del Espíritu Santo",
+  "se encarnó de María, la Virgen, y se hizo hombre;",
+  "",
+  "y por nuestra causa fue crucificado",
+  "en tiempos de Poncio Pilato;",
+  "padeció y fue sepultado,",
+  "y resucitó al tercer día, según las Escrituras,",
+  "",
+  "y subió al cielo, y está sentado a la derecha del Padre;",
+  "y de nuevo vendrá con gloria",
+  "para juzgar a vivos y muertos,",
+  "y su reino no tendrá fin.",
+  "",
+  "Creo en el Espíritu Santo, Señor y dador de vida,",
+  "que procede del Padre y del Hijo, con el Padre y el Hijo",
+  "recibe una misma adoración y gloria,",
+  "y que habló por los profetas.",
+  "",
+  "Creo en la Iglesia,",
+  "que es una, santa, católica y apostólica.",
+  "Confieso que hay un solo bautismo para el perdón de los pecados.",
+  "Espero la resurrección de los muertos y la vida del mundo futuro."
+ ],
+ "variants": [],
+ "categories": [
+  "⛪️Textos Misa"
+ ],
+ "list": "parroquia"
+},
+{
+ "code": "P122",
+ "title": "⛪️ Primera lectura",
+ "lines": [
+  "Lectura del libro del Apocalipsis 3, 1-6. 14-22",
+  "",
+  "Yo, Juan, escuché al Señor que me decía:",
+  "«Escribe al ángel de la Iglesia de Sardes:",
+  "",
+  "“Esto dice el que tiene los siete espíritus de Dios y las siete estrellas: Conozco tus obras; tienes nombre como de quien vive, pero estás muerto. Sé vigilante y reanima lo que te queda y que estaba a punto de morir, pues no he encontrado tus obras perfectas delante de mi Dios.",
+  "",
+  "Acuérdate de cómo has recibido y escuchado mi palabra, y guárdala y conviértete. Si no vigilas, vendré como ladrón y no sabrás a qué hora vendré sobre ti. Pero tienes en Sardes unas cuantas personas que no han manchado sus vestiduras, y pasearán conmigo en blancas vestiduras, porque son dignos.",
+  "",
+  "El vencedor será vestido de blancas vestiduras, no borraré su nombre del libro de la vida y confesaré su nombre delante de mi Padre y delante de sus ángeles. El que tenga oídos, oiga lo que el Espíritu dice a las Iglesias”.",
+  "",
+  "Escribe al ángel de la Iglesia en Laodicea:",
+  "",
+  "“Esto dice el Amén, el testigo fiel y veraz, el principio de la creación de Dios: Conozco tus obras: no eres ni frío ni caliente. ¡Ojalá fueras frío o caliente! Pero porque eres tibio ni frío ni caliente, estoy a punto de vomitarte de mi boca.",
+  "",
+  "Porque dices: ‘Yo soy rico, me he enriquecido, y no tengo necesidad de nada’; y no sabes que tú eres desgraciado, digno de lástima, pobre, ciego y desnudo.",
+  "",
+  "Te aconsejo que me compres oro acrisolado al fuego para que te enriquezcas; y vestiduras blancas para que te vistas y no aparezca la vergüenza de tu desnudez; y colirio para untarte los ojos a fin de que veas.",
+  "",
+  "Yo, a cuantos amo, reprendo y corrijo; ten, pues, celo y conviértete. Mira, estoy de pie a la puerta y llamo. Si alguien escucha mi voz y abre la puerta, entraré en su casa y cenaré con él y él conmigo.",
+  "",
+  "Al vencedor le concederé sentarse conmigo en mi trono, como yo he vencido y me he sentado con mi Padre en su trono. El que tenga oídos, oiga lo que el Espíritu dice a las Iglesias”».",
+  "",
+  "Palabra de Dios.",
+  "R./ Te alabamos, Señor."
+ ],
+ "variants": [],
+ "categories": [
+  "⛪️Textos Misa"
+ ],
+ "list": "parroquia"
+},
+{
+ "code": "P123",
+ "title": "⛪️ Salmo responsorial",
+ "lines": [
+  "R./ Al vencedor le concederé sentarse conmigo en mi trono."
+ ],
+ "variants": [],
+ "categories": [
+  "⛪️Textos Misa"
+ ],
+ "list": "parroquia"
+},
+{
+ "code": "P124",
+ "title": "⛪️ Segunda lectura",
+ "lines": [
+  "Lectura de la primera carta del apóstol san Pablo a los Tesalonicenses 5, 1-6",
+  "",
+  "En lo referente al tiempo y a las circunstancias, hermanos, no necesitáis que os escriba, pues vosotros sabéis perfectamente que el Día del Señor llegará como un ladrón en la noche. Cuando estén diciendo: «paz y seguridad», entonces, de improviso, les sobrevendrá la ruina, como los dolores de parto a la que está encinta, y no podrán escapar.",
+  "",
+  "Pero vosotros, hermanos, no vivís en tinieblas, de forma que ese día os sorprenda como un ladrón; porque todos sois hijos de la luz e hijos del día; no somos de la noche ni de las tinieblas.",
+  "",
+  "Así, pues, no nos entreguemos al sueño como los demás, sino estemos en vela y vivamos sobriamente.",
+  "",
+  "Palabra de Dios.",
+  "R./ Te alabamos, Señor."
+ ],
+ "variants": [],
+ "categories": [
+  "⛪️Textos Misa"
+ ],
+ "list": "parroquia"
+},
+{
+ "code": "P125",
+ "title": "⛪️ Evangelio",
+ "lines": [
+  "S./ El Señor esté con vosotros.",
+  "R./ Y con tu espíritu.",
+  "",
+  "S./ Lectura del santo Evangelio según san Mateo.",
+  "R./ Gloria a ti, Señor.",
+  "",
+  "S./ Palabra del Señor.",
+  "R./ Gloria a ti, Señor Jesús."
+ ],
+ "variants": [],
+ "categories": [
+  "⛪️Textos Misa"
+ ],
+ "list": "parroquia"
+},
+{
+ "code": "P126",
+ "title": "⛪️ Gloria",
+ "lines": [
+  "Gloria a Dios en el cielo,",
+  "y en la tierra paz a los hombres que ama el Señor.",
+  "",
+  "Por tu inmensa gloria te alabamos,",
+  "te bendecimos, te adoramos,",
+  "te glorificamos, te damos gracias,",
+  "",
+  "Señor Dios, Rey celestial,",
+  "Dios Padre todopoderoso Señor,",
+  "Hijo único, Jesucristo.",
+  "Señor Dios, Cordero de Dios, Hijo del Padre;",
+  "",
+  "tú que quitas el pecado del mundo,",
+  "ten piedad de nosotros;",
+  "tú que quitas el pecado del mundo,",
+  "atiende nuestra súplica;",
+  "tú que estás sentado a la derecha del Padre,",
+  "ten piedad de nosotros;",
+  "",
+  "porque sólo tú eres Santo,",
+  "sólo tú Señor, sólo tú Altísimo, Jesucristo,",
+  "con el Espíritu Santo en la gloria de Dios Padre.",
+  "Amén."
+ ],
+ "variants": [],
+ "categories": [
+  "⛪️Textos Misa"
+ ],
+ "list": "parroquia"
+},
+{
+ "code": "P127",
+ "title": "⛪️ El Señor reciba...",
+ "lines": [
+  "El Señor reciba de tus manos este sacrificio,",
+  "para alabanza y gloria de su nombre,",
+  "para nuestro bien",
+  "y el de toda su santa Iglesia."
+ ],
+ "variants": [],
+ "categories": [
+  "⛪️Textos Misa"
+ ],
+ "list": "parroquia"
+}
 ]);

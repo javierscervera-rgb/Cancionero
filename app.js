@@ -81,6 +81,8 @@
   }
   let edits = store.get('edits', {}); // cambios de un editor aún no confirmados por Drive
   let notes = store.get('notes', {}); // comentarios aún no confirmados por Drive
+  let newSongs = store.get('newSongs', {}); // canciones creadas desde la web aún no guardadas en Drive
+  if (!newSongs || typeof newSongs !== 'object') newSongs = {};
   const temp = {}; // code -> {title, lines} | 'orig'  (mientras se recibe en directo)
 
   function prep(s) {
@@ -392,7 +394,8 @@
       items = selSongs().filter((s) => !q || s.searchText.includes(q) || s.code.toLowerCase().includes(q));
     }
     const chosen = new Set(selCodes());
-    list.innerHTML = items.map((s) =>
+    const addPill = sel ? '' : '<li class="add-song"><button id="addSongBtn" type="button"><span class="as-plus">＋</span> Añadir una canción</button></li>';
+    list.innerHTML = addPill + (items.map((s) =>
       `<li data-code="${s.code}"><a href="#${s.code}" draggable="false" class="${state.current === s ? 'active' : ''}${chosen.has(s.code) ? ' sel' : ''}">` +
       `<span class="code">${s.code}</span><span class="t">${esc(s.title)}</span>` +
       `<span class="k">${keyName(s, state.shifts[s.code] || 0)}</span>` +
@@ -400,7 +403,9 @@
       `<li class="empty">${sel ? 'No hay canciones seleccionadas que coincidan.'
         : state.letter ? 'No hay canciones que empiecen por esa letra aquí.'
         : state.category && !state.query ? 'Esta colección está vacía. Abre una canción y pulsa «🏷 Colecciones» para añadirla.'
-        : 'No hay canciones que coincidan.'}</li>`;
+        : 'No hay canciones que coincidan.'}</li>`);
+    const ab = $('addSongBtn');
+    if (ab) ab.onclick = () => openNewSong();
   }
 
   // ---------- Canción ----------
@@ -701,6 +706,74 @@
     syncHash = null;
     if (!fromSync) notify('song');
   }
+
+  // ---------- Añadir una canción desde la web (con o sin acordes) ----------
+  function nextCode(list) {
+    const ls = SONGS.filter((x) => x.list === list);
+    const last = ls[ls.length - 1];
+    const m = last && /^([A-Za-z]+)(\d+)$/.exec(last.code);
+    const prefix = m ? m[1] : (list.slice(0, 2).toUpperCase());
+    const width = m ? m[2].length : 2;
+    let n = 0;
+    SONGS.forEach((x) => { const k = new RegExp('^' + prefix + '(\\d+)$').exec(x.code); if (k) n = Math.max(n, +k[1]); });
+    let code;
+    do { n++; code = prefix + String(n).padStart(width, '0'); } while (SONGS.some((x) => x.code === code));
+    return code;
+  }
+  function createSong(title, text, cats) {
+    const list = state.list;
+    let lines = text.replace(/\r/g, '').replace(/\t/g, '    ').split('\n').map((l) => l.replace(/\s+$/, ''));
+    while (lines.length && !lines[0].trim()) lines.shift();
+    while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+    lines = lines.filter((l, i) => l.trim() || (i > 0 && lines[i - 1].trim()));
+    if (!lines.length) lines = [''];
+    const code = nextCode(list);
+    const n = { code, title: title.trim().slice(0, 200), lines, categories: cats.slice(), list };
+    newSongs[code] = n; store.set('newSongs', newSongs);
+    const s = { code, title: n.title, lines: lines.slice(), variants: [], categories: cats.slice(), list, baseCats: cats.slice() };
+    ORIG[code] = { title: n.title, lines: lines.slice() };
+    SONGS.push(s); s.index = SONGS.length - 1; load(s); applyCats(s);
+    localChanged();
+    renderLists(); renderList();
+    location.hash = '#' + code;
+    return code;
+  }
+  const nsDlg = document.createElement('div');
+  nsDlg.id = 'newSongDlg'; nsDlg.className = 'coll-dlg'; nsDlg.hidden = true;
+  nsDlg.setAttribute('role', 'dialog'); nsDlg.setAttribute('aria-modal', 'true');
+  nsDlg.innerHTML = `
+    <div class="coll-card ns-card">
+      <div class="ed-top"><h2>Añadir una canción</h2><button class="icon-btn" id="nsClose" aria-label="Cerrar">✕</button></div>
+      <p class="muted small-note" id="nsWhere"></p>
+      <label class="field">Título <input id="nsTitle" maxlength="200" autocomplete="off"></label>
+      <label class="field">Letra
+        <textarea id="nsText" rows="12" spellcheck="false" autocapitalize="off" placeholder="Escribe o pega la letra.&#10;&#10;Una línea en blanco separa los párrafos."></textarea>
+      </label>
+      <p class="muted small-note">Los acordes son opcionales: escríbelos en la línea de encima de la letra, sobre la sílaba (DO RE MI… o C D E…). Después podrás ajustarlos con ✎ Editar.</p>
+      <div class="ns-cats" id="nsCats"></div>
+      <p class="coll-msg" id="nsMsg"></p>
+      <div class="ed-foot"><span class="ed-spacer"></span><button class="pill" id="nsCancel">Cancelar</button><button class="pill primary" id="nsSave">Añadir</button></div>
+    </div>`;
+  document.body.appendChild(nsDlg);
+  function openNewSong() {
+    $('nsWhere').textContent = 'Se añadirá al ' + listById(state.list).name + ' y se guardará en Drive para todos.';
+    $('nsTitle').value = ''; $('nsText').value = ''; $('nsMsg').textContent = '';
+    $('nsCats').innerHTML = '<span class="sl">Colecciones</span>' + catsFor(state.list).map((c) =>
+      `<label class="coll-item"><input type="checkbox" value="${esc(c)}"${c === state.category ? ' checked' : ''}> <span>${esc(catLabel(c))}</span></label>`).join('');
+    nsDlg.hidden = false;
+    setTimeout(() => $('nsTitle').focus(), 30);
+  }
+  const closeNs = () => { nsDlg.hidden = true; };
+  $('nsClose').onclick = closeNs; $('nsCancel').onclick = closeNs;
+  nsDlg.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeNs(); e.stopPropagation(); });
+  $('nsSave').onclick = () => {
+    const t = $('nsTitle').value.trim(), txt = $('nsText').value;
+    if (!t) { $('nsMsg').textContent = 'Escribe el título.'; $('nsTitle').focus(); return; }
+    if (!txt.trim()) { $('nsMsg').textContent = 'Escribe la letra.'; $('nsText').focus(); return; }
+    const cats = [...$('nsCats').querySelectorAll('input:checked')].map((x) => x.value);
+    closeNs();
+    createSong(t, txt, cats);
+  };
 
   // ---------- Selección: pestañas, deslizar a la derecha y ordenar arrastrando ----------
   $('tabSel').onclick = () => setTab('sel');
@@ -1099,6 +1172,7 @@
       Object.entries(notes).forEach(([code, text]) => out.notes.push({ code, text }));
       Object.entries(coll.songs).forEach(([code, list]) => out.cats.push({ code, categories: list.slice() }));
       out.sel = selLocal ? JSON.parse(JSON.stringify(selLocal)) : null; // { idLista: [códigos] }
+      out.newSongs = Object.values(newSongs).map((x) => JSON.parse(JSON.stringify(x)));
       return out;
     },
     // El cancionero tal como viene de la fuente (sin cambios locales), para subirlo la primera vez
@@ -1136,6 +1210,15 @@
         ORIG[d.code] = { title: d.title, lines: d.lines.slice() };
         return s;
       });
+      // canciones nuevas ya guardadas en Drive dejan de estar pendientes; las demás se mantienen
+      const inDoc = new Set(next.map((x) => x.code));
+      Object.keys(newSongs).forEach((code) => {
+        if (inDoc.has(code)) { delete newSongs[code]; return; }
+        const n = newSongs[code], sx = byCode[code] || { code };
+        sx.variants = []; sx.list = n.list; sx.baseCats = n.categories.slice(); ORIG[code] = { title: n.title, lines: n.lines.slice() };
+        next.push(sx);
+      });
+      store.set('newSongs', newSongs);
       SONGS.splice(0, SONGS.length, ...next);
       reconcile();
       SONGS.forEach((s, i) => { s.index = i; load(s); applyCats(s); });

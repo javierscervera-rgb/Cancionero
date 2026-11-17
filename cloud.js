@@ -56,6 +56,7 @@
         if (at < 0) doc.songs.push(ns); else doc.songs.splice(at + 1, 0, ns);
         break;
       }
+      case 'listCats': (doc.lists || []).forEach((l) => { if (l.id === r.list) l.cats = r.cats.slice(); }); break;
       case 'sel': doc.selections = doc.selections || {}; delete doc.selection; doc.selections[r.list] = r.codes.slice(); break;
       case 'addCat': doc.customCats = doc.customCats || []; if (!doc.customCats.includes(r.name)) doc.customCats.push(r.name); break;
       case 'delCat':
@@ -103,6 +104,16 @@
     const have = new Set(st.doc.songs.map((x) => x.code));
     (window.BUNDLE_SONGS || []).filter((x) => x && x.code && !have.has(x.code)).forEach((x) => ops.push({ op: 'addSong', code: x.code,
       song: { code: x.code, title: x.title, lines: x.lines, categories: x.categories || [], list: x.list || '' } }));
+    // colecciones oficiales nuevas incluidas en la web (p. ej. «⛪️Textos Misa»): se añaden al cancionero en Drive
+    (window.BUNDLE_LISTS || []).forEach((bl) => {
+      const dl = (st.doc.lists || []).find((x) => x.id === bl.id);
+      if (!dl || !Array.isArray(bl.cats)) return;
+      const have = dl.cats || [];
+      if (bl.cats.every((c) => have.includes(c))) return;
+      ops.push({ op: 'listCats', list: bl.id, cats: bl.cats.concat(have.filter((c) => !bl.cats.includes(c))) });
+    });
+    // canciones creadas desde la web en este dispositivo
+    (p.newSongs || []).filter((x) => !have.has(x.code)).forEach((x) => ops.push({ op: 'addSong', code: x.code, song: x }));
     p.addCats.forEach((name) => ops.push({ op: 'addCat', name }));
     p.songs.forEach((x) => ops.push({ op: 'song', code: x.code, title: x.title, lines: x.lines }));
     p.notes.forEach((x) => ops.push({ op: 'note', code: x.code, text: x.text }));
@@ -117,7 +128,7 @@
       for (const op of ops) {
         const r = await post(Object.assign({ by: st.by }, op));
         if (!r.ok && r.error === 'existe') { stale = true; continue; } // otro dispositivo la subió antes
-        if (!r.ok && r.error === 'operacion' && op.op === 'sel') continue; // script aún sin «Selección»: se guarda más tarde
+        if (!r.ok && r.error === 'operacion' && (op.op === 'sel' || op.op === 'listCats')) continue; // script aún sin esa operación: se guarda más tarde
         if (!r.ok) { handleError(r.error); failed = true; break; }
         applyOp(st.doc, op);
         if (r.rev !== rev() + 1) stale = true; // alguien más ha guardado entretanto
@@ -171,13 +182,13 @@
 
   function pendingCount() {
     const p = A.pending();
-    return p.addCats.length + p.delCats.length + p.songs.length + p.notes.length + p.cats.length + (p.sel ? Object.keys(p.sel).length : 0);
+    return p.addCats.length + p.delCats.length + p.songs.length + p.notes.length + p.cats.length + (p.sel ? Object.keys(p.sel).length : 0) + (p.newSongs ? p.newSongs.length : 0);
   }
   function label() {
     const n = pendingCount();
     return n ? '⏳ Guardando ' + n + ' cambio(s) en Drive…' : '☁ Se guarda en Drive para todos';
   }
-  const OPS = { sel: 'cambió la selección', addSong: 'añadió', lists: 'reordenó las listas', song: 'editó', note: 'comentó', cats: 'cambió colecciones de', addCat: 'creó la colección', delCat: 'borró la colección', init: 'subió el cancionero' };
+  const OPS = { listCats: 'cambió las colecciones de', sel: 'cambió la selección', addSong: 'añadió', lists: 'reordenó las listas', song: 'editó', note: 'comentó', cats: 'cambió colecciones de', addCat: 'creó la colección', delCat: 'borró la colección', init: 'subió el cancionero' };
   function renderUi() {
     const ob = $('cloudOpen');
     if (ob) { ob.hidden = false; ob.textContent = st.ok === false ? '☁ Sin conexión' : '☁ Drive'; }
