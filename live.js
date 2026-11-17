@@ -44,8 +44,8 @@
   // ---------- Emisor ----------
   function snapshot() {
     const s = window.App.getState();
-    if (live.mode === 'letras') return { v: 2, kind: 'para', seq: ++live.seq, song: live.last ? live.last.song : '', para: live.last ? live.last.para : null, pt: live.last ? live.last.pt : 0, blank: s.blank, bt: live.blankT };
-    return { v: 2, seq: ++live.seq, song: s.song, shift: s.shift, para: s.para, pt: live.paraT, blank: s.blank, bt: live.blankT, rv: window.Cloud ? window.Cloud.rev() : 0 };
+    if (live.mode === 'letras') return { v: 2, kind: 'para', seq: ++live.seq, song: live.last ? live.last.song : '', para: live.last ? live.last.para : null, sub: live.last ? live.last.sub || 0 : 0, pt: live.last ? live.last.pt : 0, blank: s.blank, bt: live.blankT };
+    return { v: 2, seq: ++live.seq, song: s.song, shift: s.shift, para: s.para, sub: s.sub, pt: live.paraT, blank: s.blank, bt: live.blankT, rv: window.Cloud ? window.Cloud.rev() : 0 };
   }
   const followerMode = () => live.mode === 'receptor' || live.mode === 'letras';
   function send() {
@@ -64,6 +64,7 @@
     const d = msg.data;
     if (!d || typeof d !== 'object' || d.v !== 2 || typeof d.song !== 'string') return;
     const para = Number.isInteger(d.para) ? d.para : null;
+    const sub = Number.isInteger(d.sub) && d.sub >= 0 ? d.sub : 0;
     const pt = typeof d.pt === 'number' ? d.pt : 0;
     // pantalla en negro: gana el cambio más reciente (del líder o de Letras)
     if (typeof d.blank === 'boolean' && typeof d.bt === 'number' && d.bt > live.blankT && live.mode !== 'off' &&
@@ -80,15 +81,15 @@
       if (live.mode === 'emisor') {
         // el líder también lo ve, y lo incluye en su estado para todos
         const s = window.App.getState();
-        if (d.song === s.song && pt > live.paraT && para !== s.para) {
+        if (d.song === s.song && pt > live.paraT && (para !== s.para || sub !== s.sub)) {
           live.paraT = pt;
           live.applying = true;
-          window.App.apply({ song: d.song, para });
+          window.App.apply({ song: d.song, para, sub });
           setTimeout(() => { live.applying = false; }, 200);
           setTimeout(send, 250);
         }
       } else if (followerMode() && live.last && d.song === live.last.song && pt > (live.last.pt || 0)) {
-        live.last.para = para; live.last.pt = pt;
+        live.last.para = para; live.last.sub = sub; live.last.pt = pt;
         if (!live.paused) applyLast();
         render();
       }
@@ -101,9 +102,9 @@
     // el líder tiene una versión más nueva del cancionero compartido
     if (window.Cloud && Number.isInteger(d.rv)) window.Cloud.behind(d.rv);
     const prev = live.last;
-    live.last = { song: d.song, shift: d.shift, para, pt };
+    live.last = { song: d.song, shift: d.shift, para, sub, pt };
     // si Letras pasó un párrafo más reciente de esta canción, se mantiene
-    if (prev && prev.song === d.song && (prev.pt || 0) > pt) { live.last.para = prev.para; live.last.pt = prev.pt; }
+    if (prev && prev.song === d.song && (prev.pt || 0) > pt) { live.last.para = prev.para; live.last.sub = prev.sub; live.last.pt = prev.pt; }
     if (live.paused) { render(); return; }
     applyLast();
     render();
@@ -116,7 +117,7 @@
     const d = live.last;
     if (!d) return;
     live.applying = true;
-    window.App.apply({ song: d.song, shift: d.shift, para: d.para }, { noPara: live.mode === 'receptor' && !live.followScroll });
+    window.App.apply({ song: d.song, shift: d.shift, para: d.para, sub: d.sub || 0 }, { noPara: live.mode === 'receptor' && !live.followScroll });
     setTimeout(() => { live.applying = false; }, 200);
   }
   function setFollowing(peer) {
@@ -141,8 +142,8 @@
     } else if (live.mode === 'letras' && !live.applying && live.last) {
       const s = window.App.getState();
       if (s.song === live.last.song && s.shift === live.last.shift) {
-        // pasar párrafo: es lo único que puede hacer Letras
-        if (s.para !== live.last.para) { live.last.para = s.para; live.last.pt = Date.now(); send(); }
+        // pasar párrafo (o trozo de párrafo): es lo único que puede hacer Letras
+        if (s.para !== live.last.para || s.sub !== (live.last.sub || 0)) { live.last.para = s.para; live.last.sub = s.sub; live.last.pt = Date.now(); send(); }
       } else {
         flash('Con el rol Letras solo puedes pasar los párrafos. La canción y el tono los decide el líder.');
         applyLast();

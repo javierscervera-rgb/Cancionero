@@ -21,7 +21,7 @@
     playfair: { label: 'Playfair Display', css: '"Playfair Display", serif', g: 'Playfair+Display:wght@500;700' }
   };
 
-  const cfg = Object.assign({ size: 7, t: 8, b: 8, l: 6, r: 6, font: 'sans', bold: false }, store.get('screen', {}));
+  const cfg = Object.assign({ size: 7, t: 8, b: 8, l: 6, r: 6, font: 'sans', bold: false, maxc: 0 }, store.get('screen', {}));
   if (!FONTS[cfg.font]) cfg.font = 'sans';
   const save = () => store.set('screen', cfg);
   let on = false, clean = false, uiTimer = null, guideTimer = null;
@@ -49,6 +49,12 @@
           <button class="sb" data-k="size" data-d="-0.5" title="Letra más pequeña">A−</button>
           <span class="sv" id="scrSize"></span>
           <button class="sb" data-k="size" data-d="0.5" title="Letra más grande">A+</button>
+        </span>
+        <span class="sg" title="Máximo de caracteres en pantalla: los párrafos más largos se parten en trozos">
+          <span class="sl">Máx.</span>
+          <button class="sb" data-k="maxc" data-d="-20" title="Menos caracteres por pantalla">−</button>
+          <span class="sv" id="scrMax"></span>
+          <button class="sb" data-k="maxc" data-d="20" title="Más caracteres por pantalla (hasta sin límite)">+</button>
         </span>
         <button class="sb" id="scrCfg" aria-expanded="false" title="Fuente y negrita">Aa</button>
         <button class="sb accent" id="scrFs" title="Pantalla completa (F)">⛶<span class="txt"> Pantalla completa</span></button>
@@ -83,13 +89,46 @@
   }
 
   // ---------- Contenido y ajuste ----------
+  // ---------- Párrafos largos: se parten en trozos de como mucho cfg.maxc caracteres ----------
+  // Preferencia: saltos de línea; si una línea sola no cabe, puntos/punto y coma, luego comas, luego palabras.
+  const SEPS = [/(?<=[.;:!?»”])\s+/, /(?<=,)\s+/, /\s+/];
+  function splitLine(line, max, lvl = 0) {
+    if (line.length <= max || lvl >= SEPS.length) return [line];
+    const parts = line.split(SEPS[lvl]);
+    if (parts.length < 2) return splitLine(line, max, lvl + 1);
+    const out = []; let cur = '';
+    parts.forEach((p) => { if (cur && (cur + ' ' + p).length > max) { out.push(cur); cur = p; } else cur = cur ? cur + ' ' + p : p; });
+    if (cur) out.push(cur);
+    return out.flatMap((x) => (x.length > max ? splitLine(x, max, lvl + 1) : [x]));
+  }
+  function chunksOf(lines) {
+    const max = cfg.maxc;
+    if (!max || lines.join(' ').length <= max) return [lines];
+    const out = []; let cur = [], len = 0;
+    lines.flatMap((l) => splitLine(l, max)).forEach((l) => {
+      const add = (len ? 1 : 0) + l.length;
+      if (cur.length && len + add > max) { out.push(cur); cur = []; len = 0; }
+      cur.push(l); len += (len ? 1 : 0) + l.length;
+    });
+    if (cur.length) out.push(cur);
+    return out;
+  }
+  const curChunks = () => { const i = A.para(); return i === null || i === undefined ? [] : chunksOf(A.lyricParas()[i] || []); };
   function content() {
-    const paras = A.lyricParas();
     const i = A.para();
     if (A.blank && A.blank()) return '';
     if (!A.title()) return '';
     if (i === null || i === undefined) return A.title();
-    return (paras[i] || []).join('\n');
+    const ch = curChunks();
+    return (ch[Math.min(A.sub(), ch.length - 1)] || []).join('\n');
+  }
+  // avanzar o retroceder: primero por los trozos del párrafo, luego al párrafo siguiente/anterior
+  function stepScreen(d) {
+    const i = A.para(), n = curChunks().length, sub = Math.min(A.sub(), Math.max(0, n - 1));
+    if (i !== null && d > 0 && sub < n - 1) { A.setSub(sub + 1); return; }
+    if (i !== null && d < 0 && sub > 0) { A.setSub(sub - 1); return; }
+    A.step(d);
+    if (d < 0) { const m = curChunks().length; if (m > 1) A.setSub(m - 1); }
   }
 
   function fit() {
@@ -124,7 +163,9 @@
       txt.classList.add('show');
     }
     const n = A.paraCount(), i = A.para();
-    $('scrPos').textContent = n ? ((i === null ? '–' : i + 1) + ' / ' + n) : '';
+    const nc = curChunks().length;
+    $('scrPos').textContent = n ? ((i === null ? '–' : i + 1) + (nc > 1 ? '.' + (Math.min(A.sub(), nc - 1) + 1) : '') + ' / ' + n) : '';
+    $('scrMax').textContent = cfg.maxc ? '≤' + cfg.maxc : '∞';
     $('scrSize').textContent = cfg.size.toFixed(1);
     placeLines();
     sel.value = cfg.font;
@@ -195,6 +236,12 @@
       e.stopPropagation();
       const k = b.dataset.k, d = +b.dataset.d;
       if (k === 'size') cfg.size = Math.max(2, Math.min(20, Math.round((cfg.size + d) * 10) / 10));
+      else if (k === 'maxc') {
+        // ∞ (0) → 300 → … → 40; y al subir de 600 vuelve a ∞
+        if (!cfg.maxc) cfg.maxc = d < 0 ? 300 : 0;
+        else { cfg.maxc += d; if (cfg.maxc > 600) cfg.maxc = 0; if (cfg.maxc && cfg.maxc < 40) cfg.maxc = 40; }
+        const nc = curChunks().length; if (A.sub() > nc - 1) A.setSub(Math.max(0, nc - 1));
+      }
       else { cfg[k] = Math.max(0, Math.min(40, cfg[k] + d)); showGuide(); }
       save(); render();
     };
@@ -210,8 +257,8 @@
   }
   $('scrCfg').onclick = (e) => { e.stopPropagation(); setCfgOpen(!el.classList.contains('cfg-open')); };
   setCfgOpen(store.get('screenCfgOpen', false));
-  $('scrPrev').onclick = (e) => { e.stopPropagation(); A.step(-1); };
-  $('scrNext').onclick = (e) => { e.stopPropagation(); A.step(1); };
+  $('scrPrev').onclick = (e) => { e.stopPropagation(); stepScreen(-1); };
+  $('scrNext').onclick = (e) => { e.stopPropagation(); stepScreen(1); };
   $('scrUi').addEventListener('click', (e) => e.stopPropagation());
 
   // Tocar la letra: tercio izquierdo = anterior, resto = siguiente.
@@ -227,15 +274,15 @@
     el.addEventListener(t, () => clearTimeout(pressTimer)));
   el.addEventListener('click', (e) => {
     if (!on || longPressed || justDragged || e.target.closest('#scrUi') || e.target.closest('.scr-line') || locked()) return;
-    if (e.clientX < window.innerWidth / 3) A.step(-1); else A.step(1);
+    if (e.clientX < window.innerWidth / 3) stepScreen(-1); else stepScreen(1);
   });
 
   document.addEventListener('keydown', (e) => {
     if (!on || e.target.matches('input, textarea')) return;
     const k = e.key;
     if (locked() && !['f', 'F', 'Escape'].includes(k)) { e.preventDefault(); return; }
-    if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(k)) { e.preventDefault(); A.step(1); }
-    else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(k)) { e.preventDefault(); A.step(-1); }
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(k)) { e.preventDefault(); stepScreen(1); }
+    else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(k)) { e.preventDefault(); stepScreen(-1); }
     else if (k === 'f' || k === 'F') { if (isFs() || clean) { exitFs(); setClean(false); } else enterFs(); }
     else if (k === 'Escape') { if (clean && !isFs()) setClean(false); else if (!isFs()) close(); }
     else if ((k === 'b' || k === 'B') && !(window.Live && window.Live.receiving())) A.setBlank(!A.blank());

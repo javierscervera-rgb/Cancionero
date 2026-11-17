@@ -19,6 +19,7 @@
     para: null,
     paraCount: 0,
     blank: false,          // pantalla de presentación en negro (sin letra)
+    sub: 0,                // trozo del párrafo que se proyecta (si el párrafo es muy largo)
     query: '',
     letter: null,          // filtro por inicial del título (A, B… o #)
     tab: store.get('tab', 'all'), // pestaña de la lista: 'sel' (Selección) o 'all' (Todas)
@@ -573,6 +574,7 @@
   function selectPara(i, fromSync) {
     if (i !== null && (!Number.isInteger(i) || i < 0 || i >= state.paraCount)) return;
     state.para = i;
+    state.sub = 0;
     $('sheet').querySelectorAll('.para').forEach((el) => el.classList.toggle('sel', +el.dataset.i === i));
     if (i !== null && !document.body.classList.contains('screen-mode')) centerPara(i);
     notifyView();
@@ -983,9 +985,9 @@
   window.App = {
     getState() {
       const s = state.current;
-      return { song: s ? s.code : '', shift: s ? (state.shifts[s.code] || 0) : 0, para: s ? state.para : null, blank: state.blank };
+      return { song: s ? s.code : '', shift: s ? (state.shifts[s.code] || 0) : 0, para: s ? state.para : null, sub: state.sub, blank: state.blank };
     },
-    apply({ song, shift, para, blank }, opts) {
+    apply({ song, shift, para, sub, blank }, opts) {
       if (typeof blank === 'boolean') setBlank(blank, true);
       const cur = state.current ? state.current.code : '';
       if (typeof song === 'string' && song !== cur) {
@@ -1001,7 +1003,11 @@
       }
       if (target && (para === null || Number.isInteger(para)) && !(opts && opts.noPara)) {
         // tras cambiar de canción, esperar a que se pinte
-        const go = () => { if (state.current === target && para !== state.para) selectPara(para, true); };
+        const go = () => {
+          if (state.current !== target) return;
+          if (para !== state.para) selectPara(para, true);
+          if (Number.isInteger(sub) && sub >= 0 && sub !== state.sub) { state.sub = sub; notifyView(); }
+        };
         if (state.current === target) go(); else setTimeout(go, 120);
       }
     },
@@ -1015,6 +1021,13 @@
     para: () => state.para,
     paraCount: () => state.paraCount,
     selectPara: (i) => selectPara(i),
+    sub: () => state.sub,
+    setSub(n, fromSync) {
+      if (!Number.isInteger(n) || n < 0 || n === state.sub) return;
+      state.sub = n;
+      notifyView();
+      if (!fromSync) notify('para');
+    },
     step(d) {
       if (!state.current || !state.paraCount) return;
       const n = state.para === null ? 0 : state.para + d;
