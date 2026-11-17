@@ -702,7 +702,7 @@ body.screen-mode > *:not(#screen):not(.live-bar):not(.live-panel) { visibility: 
 .sidebar.scrolling .song-list { will-change: transform; }
 
 /* Pastilla para añadir una canción */
-.song-list li.add-song { margin-bottom: 8px; }
+.song-list li.add-song { margin: 10px 0 8px; }
 .song-list li.add-song button {
   width: 100%; min-height: 50px; border: 2px dashed var(--accent); border-radius: 14px; background: transparent;
   color: var(--accent); font-weight: 700; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;

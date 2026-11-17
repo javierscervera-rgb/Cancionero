@@ -394,8 +394,9 @@
       items = selSongs().filter((s) => !q || s.searchText.includes(q) || s.code.toLowerCase().includes(q));
     }
     const chosen = new Set(selCodes());
-    const addPill = sel ? '' : '<li class="add-song"><button id="addSongBtn" type="button"><span class="as-plus">＋</span> Añadir una canción</button></li>';
-    list.innerHTML = addPill + (items.map((s) =>
+    // la pastilla para añadir va siempre al final de la lista (todas, colección, letra, búsqueda o selección)
+    const addPill = '<li class="add-song"><button id="addSongBtn" type="button"><span class="as-plus">＋</span> Añadir una canción</button></li>';
+    list.innerHTML = (items.map((s) =>
       `<li data-code="${s.code}"><a href="#${s.code}" draggable="false" class="${state.current === s ? 'active' : ''}${chosen.has(s.code) ? ' sel' : ''}">` +
       `<span class="code">${s.code}</span><span class="t">${esc(s.title)}</span>` +
       `<span class="k">${keyName(s, state.shifts[s.code] || 0)}</span>` +
@@ -403,7 +404,7 @@
       `<li class="empty">${sel ? 'No hay canciones seleccionadas que coincidan.'
         : state.letter ? 'No hay canciones que empiecen por esa letra aquí.'
         : state.category && !state.query ? 'Esta colección está vacía. Abre una canción y pulsa «🏷 Colecciones» para añadirla.'
-        : 'No hay canciones que coincidan.'}</li>`);
+        : 'No hay canciones que coincidan.'}</li>`) + addPill;
     const ab = $('addSongBtn');
     if (ab) ab.onclick = () => openNewSong();
   }
@@ -730,9 +731,11 @@
     const code = nextCode(list);
     const n = { code, title: title.trim().slice(0, 200), lines, categories: cats.slice(), list };
     newSongs[code] = n; store.set('newSongs', newSongs);
+    const addToSel = state.tab === 'sel';
     const s = { code, title: n.title, lines: lines.slice(), variants: [], categories: cats.slice(), list, baseCats: cats.slice() };
     ORIG[code] = { title: n.title, lines: lines.slice() };
     SONGS.push(s); s.index = SONGS.length - 1; load(s); applyCats(s);
+    if (addToSel) setSelection(selCodes(list).concat(code), list);
     localChanged();
     renderLists(); renderList();
     location.hash = '#' + code;

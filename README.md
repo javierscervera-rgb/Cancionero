@@ -120,7 +120,7 @@ Solo hay una versión del cancionero: la guardada en Google Drive (cuenta de la 
 
 ## Añadir canciones desde la web
 
-- La primera pastilla de la lista («＋ Añadir una canción», con borde discontinuo) abre un formulario: título, letra (con acordes opcionales en la línea de encima) y colecciones. La canción se añade al cancionero elegido con el siguiente código libre (p. ej. P129) y se guarda en Drive para todos.
+- La última pastilla de la lista («＋ Añadir una canción», con borde discontinuo; siempre al final, también en colecciones, búsquedas y en «Selección», donde la canción nueva entra además en la selección) abre un formulario: título, letra (con acordes opcionales en la línea de encima) y colecciones. La canción se añade al cancionero elegido con el siguiente código libre (p. ej. P129) y se guarda en Drive para todos.
 
 ## Textos de la Misa
 
