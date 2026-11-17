@@ -21,7 +21,7 @@
     blank: false,          // pantalla de presentación en negro (sin letra)
     query: '',
     letter: null,          // filtro por inicial del título (A, B… o #)
-    listFont: store.get('listFont', 14),
+    listFont: store.get('listFont2', 19),
     current: null
   };
 
@@ -250,8 +250,8 @@
     $('listFontDown').disabled = state.listFont <= 11;
     $('listFontUp').disabled = state.listFont >= 24;
   }
-  $('listFontUp').onclick = () => { state.listFont = Math.min(24, state.listFont + 1); store.set('listFont', state.listFont); applyListFont(); };
-  $('listFontDown').onclick = () => { state.listFont = Math.max(11, state.listFont - 1); store.set('listFont', state.listFont); applyListFont(); };
+  $('listFontUp').onclick = () => { state.listFont = Math.min(24, state.listFont + 1); store.set('listFont2', state.listFont); applyListFont(); };
+  $('listFontDown').onclick = () => { state.listFont = Math.max(11, state.listFont - 1); store.set('listFont2', state.listFont); applyListFont(); };
   $('abcBtn').onclick = () => {
     const open = $('abcGrid').hidden;
     renderAbc();

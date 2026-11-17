@@ -32,6 +32,10 @@
   el.innerHTML = `
     <div class="scr-stage" id="scrStage"><div class="scr-text" id="scrText"></div></div>
     <div class="scr-guide" id="scrGuide"></div>
+    <div class="scr-line h" data-m="t" title="Arrastra: borde superior del texto"></div>
+    <div class="scr-line h" data-m="b" title="Arrastra: borde inferior del texto"></div>
+    <div class="scr-line v" data-m="l" title="Arrastra: borde izquierdo del texto"></div>
+    <div class="scr-line v" data-m="r" title="Arrastra: borde derecho del texto"></div>
     <div class="scr-ui" id="scrUi">
       <div class="scr-row">
         <button class="sb" id="scrExit" title="Salir del modo Pantalla (Esc)">✕<span class="txt"> Salir</span></button>
@@ -41,28 +45,19 @@
           <button class="sb" id="scrNext" title="Párrafo siguiente (→ o espacio)">▶</button>
         </span>
         <button class="sb blank-sb" id="scrBlank" aria-pressed="false" title="Pantalla en negro, sin letra (B)"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/><path d="M3.5 2.5l17 17"/></svg><span class="txt"> En negro</span></button>
-        <button class="sb" id="scrCfg" aria-expanded="false" title="Mostrar ajustes de letra, fuente y márgenes">⚙<span class="txt"> Ajustes</span></button>
-        <button class="sb accent" id="scrFs" title="Pantalla completa (F)">⛶<span class="txt"> Pantalla completa</span></button>
-      </div>
-      <div class="scr-row cfg">
-        <span class="sg"><span class="sl">Letra</span>
+        <span class="sg">
           <button class="sb" data-k="size" data-d="-0.5" title="Letra más pequeña">A−</button>
           <span class="sv" id="scrSize"></span>
           <button class="sb" data-k="size" data-d="0.5" title="Letra más grande">A+</button>
         </span>
+        <button class="sb" id="scrCfg" aria-expanded="false" title="Fuente y negrita">Aa</button>
+        <button class="sb accent" id="scrFs" title="Pantalla completa (F)">⛶<span class="txt"> Pantalla completa</span></button>
+      </div>
+      <div class="scr-row cfg">
         <span class="sg"><span class="sl">Fuente</span>
           <select id="scrFont" aria-label="Fuente de la letra"></select>
           <button class="sb" id="scrBold" aria-pressed="false" title="Negrita"><b>N</b></button>
         </span>
-      </div>
-      <div class="scr-row cfg margins">
-        <span class="sl">Márgenes</span>
-        ${[['t', '↑ Arriba'], ['b', '↓ Abajo'], ['l', '← Izq.'], ['r', '→ Der.']].map(([k, n]) => `
-        <span class="sg"><span class="sl">${n}</span>
-          <button class="sb" data-k="${k}" data-d="-1" title="Reducir margen">−</button>
-          <span class="sv" id="scrM${k}"></span>
-          <button class="sb" data-k="${k}" data-d="1" title="Aumentar margen">+</button>
-        </span>`).join('')}
       </div>
     </div>`;
   document.body.appendChild(el);
@@ -131,7 +126,7 @@
     const n = A.paraCount(), i = A.para();
     $('scrPos').textContent = n ? ((i === null ? '–' : i + 1) + ' / ' + n) : '';
     $('scrSize').textContent = cfg.size.toFixed(1);
-    ['t', 'b', 'l', 'r'].forEach((k) => { $('scrM' + k).textContent = cfg[k] + '%'; });
+    placeLines();
     sel.value = cfg.font;
     $('scrBold').setAttribute('aria-pressed', String(cfg.bold));
     $('scrBlank').setAttribute('aria-pressed', String(!!(A.blank && A.blank())));
@@ -221,7 +216,7 @@
   // Mantener pulsado 0,7 s sale de la pantalla completa / modo limpio.
   let pressTimer = null, longPressed = false;
   $('scrStage').parentElement.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('#scrUi')) return;
+    if (e.target.closest('#scrUi') || e.target.closest('.scr-line')) return;
     longPressed = false;
     clearTimeout(pressTimer);
     pressTimer = setTimeout(() => { longPressed = true; if (clean) { exitFs(); setClean(false); } }, 700);
@@ -229,7 +224,7 @@
   ['pointerup', 'pointercancel', 'pointerleave'].forEach((t) =>
     el.addEventListener(t, () => clearTimeout(pressTimer)));
   el.addEventListener('click', (e) => {
-    if (!on || longPressed || e.target.closest('#scrUi') || locked()) return;
+    if (!on || longPressed || justDragged || e.target.closest('#scrUi') || e.target.closest('.scr-line') || locked()) return;
     if (e.clientX < window.innerWidth / 3) A.step(-1); else A.step(1);
   });
 
@@ -255,6 +250,42 @@
   ['pointermove', 'pointerdown', 'keydown', 'touchstart'].forEach((t) =>
     window.addEventListener(t, () => { if (on && !clean) wake(); }, { passive: true }));
   window.addEventListener('resize', () => { if (on) fit(); });
+
+  // ---------- Cuadro del texto: cuatro rayas que se arrastran (forman un #) ----------
+  function placeLines() {
+    el.querySelectorAll('.scr-line').forEach((ln) => {
+      const m = ln.dataset.m;
+      if (m === 't') ln.style.top = cfg.t + 'vh';
+      if (m === 'b') ln.style.top = (100 - cfg.b) + 'vh';
+      if (m === 'l') ln.style.left = cfg.l + 'vw';
+      if (m === 'r') ln.style.left = (100 - cfg.r) + 'vw';
+    });
+  }
+  let dragLine = null, justDragged = false;
+  el.querySelectorAll('.scr-line').forEach((ln) => {
+    ln.addEventListener('pointerdown', (e) => {
+      e.stopPropagation(); e.preventDefault();
+      dragLine = ln; ln.classList.add('drag'); ln.setPointerCapture(e.pointerId);
+    });
+    ln.addEventListener('pointermove', (e) => {
+      if (dragLine !== ln) return;
+      const m = ln.dataset.m, W = window.innerWidth, H = window.innerHeight;
+      const r1 = (v) => Math.round(v * 2) / 2; // medio punto porcentual
+      if (m === 't') cfg.t = r1(Math.max(0, Math.min(100 - cfg.b - 10, e.clientY / H * 100)));
+      if (m === 'b') cfg.b = r1(Math.max(0, Math.min(100 - cfg.t - 10, (H - e.clientY) / H * 100)));
+      if (m === 'l') cfg.l = r1(Math.max(0, Math.min(100 - cfg.r - 10, e.clientX / W * 100)));
+      if (m === 'r') cfg.r = r1(Math.max(0, Math.min(100 - cfg.l - 10, (W - e.clientX) / W * 100)));
+      render();
+    });
+    const end = () => {
+      if (dragLine !== ln) return;
+      dragLine = null; ln.classList.remove('drag'); save();
+      justDragged = true; setTimeout(() => { justDragged = false; }, 250);
+    };
+    ln.addEventListener('pointerup', end);
+    ln.addEventListener('pointercancel', end);
+    ln.addEventListener('click', (e) => e.stopPropagation());
+  });
 
   $('scrBlank').onclick = (e) => { e.stopPropagation(); A.setBlank(!A.blank()); };
   A.onView(render);

@@ -85,12 +85,12 @@ button, select, input { font: inherit; color: inherit; }
 .song-list a {
   display: grid; grid-template-columns: 38px 1fr auto; gap: 8px; align-items: baseline;
   padding: 8px 8px; border-radius: 8px; color: var(--ink); text-decoration: none; font-size: var(--lf, 14px);
-  grid-template-columns: calc(var(--lf, 14px) * 2.8) 1fr auto;
+  grid-template-columns: calc(var(--lf, 14px) * 2.4) 1fr auto;
 }
 .song-list a:hover { background: var(--accent-soft); }
 .song-list a.active { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
-.song-list .code { font-family: var(--mono); font-size: calc(var(--lf, 14px) * .82); color: var(--muted); }
-.song-list .k { font-family: var(--mono); font-size: calc(var(--lf, 14px) * .82); color: var(--chord); }
+.song-list .code { font-family: var(--mono); font-size: calc(var(--lf, 14px) * .68); color: var(--muted); }
+.song-list .k { font-family: var(--mono); font-size: calc(var(--lf, 14px) * .72); color: var(--chord); }
 .song-list .empty { color: var(--muted); padding: 12px; font-size: 14px; }
 
 /* Contenido */
@@ -534,7 +534,7 @@ body.receiving:not(.lyrics-op) #scrBlank { display: none; }
 /* Índice: cada canción en una pastilla del doble de alto */
 .song-list li { margin-bottom: 6px; }
 .song-list a {
-  align-items: center; min-height: calc(var(--lf, 14px) * 4.4); padding: 12px 12px;
+  align-items: center; min-height: 62px; padding: 6px 12px; line-height: 1.2;
   border: 1px solid var(--line); border-radius: 14px; background: var(--bg);
 }
 .song-list a:hover { border-color: var(--accent); }
@@ -603,5 +603,22 @@ body.sb-dragging * { cursor: col-resize !important; }
   .lists.open .list-item.on::after { transform: rotate(180deg); }
   .live-bar { bottom: calc(var(--peek) + 10px); }
   body.screen-mode .sidebar { display: none; }
+  #backBtn { display: none !important; } /* la lista se abre deslizando el panel de abajo */
 }
 
+
+/* Pantalla: cuadro del texto marcado con cuatro rayas arrastrables (#) */
+.scr-line { position: absolute; z-index: 1; touch-action: none; }
+.scr-line.h { left: 0; right: 0; height: 24px; margin-top: -12px; cursor: row-resize; }
+.scr-line.v { top: 0; bottom: 0; width: 24px; margin-left: -12px; cursor: col-resize; }
+.scr-line::before { content: ''; position: absolute; background: rgba(255,255,255,.38); }
+.scr-line.h::before { left: 0; right: 0; top: 11px; height: 2px; }
+.scr-line.v::before { top: 0; bottom: 0; left: 11px; width: 2px; }
+.scr-line:hover::before, .scr-line.drag::before { background: var(--accent); }
+.scr-line::after { content: ''; position: absolute; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px rgba(0,0,0,.5); opacity: .85; }
+.scr-line.h::after { left: 22%; top: 5px; margin-left: -7px; }
+.scr-line.v::after { top: 40%; left: 5px; margin-top: -7px; }
+.scr-line.drag::after { background: var(--accent); }
+.screen.idle .scr-line { opacity: .45; }
+.screen.clean .scr-line { display: none; }
+.scr-row .sg .sv { min-width: 28px; text-align: center; }
