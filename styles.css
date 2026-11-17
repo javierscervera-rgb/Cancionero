@@ -655,7 +655,7 @@ body.screen-mode > *:not(#screen):not(.live-bar):not(.live-panel) { visibility: 
 .screen { width: 100%; min-height: 100%; }
 
 /* ---------- Selección ---------- */
-.song-list a { position: relative; touch-action: pan-y; -webkit-user-drag: none; transition: transform .18s ease, background .2s; user-select: none; -webkit-user-select: none; }
+.song-list a { position: relative; touch-action: pan-y; -webkit-user-drag: none; transition: transform .22s cubic-bezier(.2,.8,.2,1), background .2s; user-select: none; -webkit-user-select: none; }
 .song-list a.sel::before {
   content: ''; position: absolute; left: 5px; top: 50%; margin-top: -5px; width: 10px; height: 10px; border-radius: 50%;
   background: #d93a2b; box-shadow: 0 0 0 2px var(--bg);
@@ -675,3 +675,17 @@ body.screen-mode > *:not(#screen):not(.live-bar):not(.live-panel) { visibility: 
 .sidebar.sorting .song-list .k { visibility: hidden; }
 .song-list li.dragging { position: relative; z-index: 3; }
 .song-list li.dragging a { box-shadow: 0 10px 24px -10px rgba(0,0,0,.45); border-color: var(--accent); }
+
+/* Gestos de la selección: sin animación mientras el dedo arrastra */
+.song-list li { position: relative; }
+.song-list li.swiping > a, .song-list li.dragging, .song-list li.dragging > a { transition: none !important; }
+.song-list li.swiping::before {
+  content: attr(data-act); position: absolute; inset: 0; display: flex; align-items: center; padding: 0 14px;
+  border-radius: 14px; background: color-mix(in srgb, #d93a2b 10%, var(--panel)); color: #d93a2b; font-weight: 700; font-size: 14px;
+}
+.song-list li.swiping.to-left::before { justify-content: flex-end; }
+.song-list li.swipe-ok::before { background: #d93a2b; color: #fff; }
+.song-list li.swiping > a { z-index: 1; }
+.song-list li.dragging { z-index: 5; will-change: transform; }
+.sidebar.gesturing { scroll-behavior: auto; }
+.drag-h { touch-action: none; }

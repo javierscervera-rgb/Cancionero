@@ -112,7 +112,7 @@ Solo hay una versión del cancionero: la guardada en Google Drive (cuenta de la 
 
 ## Selección
 
-- Desliza una canción hacia la derecha para seleccionarla (aparece un punto rojo a la izquierda); vuelve a deslizarla para quitarla, en cualquier pestaña.
+- Desliza una canción hacia la derecha (o la izquierda) para seleccionarla: debajo aparece «● Seleccionar» y, al pasar el umbral, se pone en rojo. Queda un punto rojo a la izquierda. Vuelve a deslizarla para quitarla («✕ Quitar»), en cualquier pestaña.
 - Con alguna canción seleccionada aparecen las pestañas «Selección» y «Todas» bajo el buscador. La selección puede mezclar canciones de los tres cancioneros.
-- En «Selección», «↕ Ordenar» muestra un asa (≡) para arrastrar las canciones arriba o abajo. Al abrir una canción desde ahí, anterior/siguiente siguen el orden de la selección.
+- En «Selección», «↕ Ordenar» muestra un asa (≡) para arrastrar las canciones arriba o abajo; las demás se apartan mientras arrastras. Al abrir una canción desde ahí, anterior/siguiente siguen el orden de la selección.
 - La selección es una sola, compartida y guardada en Drive (operación `sel` del script).

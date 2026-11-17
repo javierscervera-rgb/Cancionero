@@ -303,11 +303,11 @@
   })();
 
   // ---------- Selección ----------
-  const selCodes = () => (selLocal || baseSel).filter((c) => SONGS.some((s) => s.code === c));
+  const selCodes = () => (selLocal || baseSel).filter((c, i, arr) => arr.indexOf(c) === i && SONGS.some((s) => s.code === c));
   const selSongs = () => selCodes().map((c) => SONGS.find((s) => s.code === c));
   const inSel = (code) => selCodes().includes(code);
   function setSelection(codes) {
-    selLocal = codes.slice();
+    selLocal = codes.filter((c, i) => typeof c === 'string' && codes.indexOf(c) === i);
     store.set('selPending', selLocal);
     if (!selLocal.length && state.tab === 'sel') setTab('all');
     localChanged();
@@ -344,7 +344,10 @@
     $('sidebar').classList.toggle('sorting', !!state.sorting);
   }
 
+  let pendingRender = false;
   function renderList() {
+    if (window.SelGesture && window.SelGesture.active()) { pendingRender = true; return; } // no repintar a mitad de un gesto
+    pendingRender = false;
     renderAbc();
     renderSelUi();
     const list = $('songList');
@@ -670,17 +673,23 @@
   $('tabAll').onclick = () => setTab('all');
   $('selSort').onclick = () => { state.sorting = !state.sorting; renderList(); };
   (function () {
-    const list = $('songList');
-    let g = null, suppress = false;
-    const SWIPE = 70;
+    const list = $('songList'), sb = $('sidebar');
+    let g = null, suppress = false, raf = 0;
+    const SWIPE = 64;
+    const quiet = () => { suppress = true; setTimeout(() => { suppress = false; }, 350); };
+    const frame = (fn) => { cancelAnimationFrame(raf); raf = requestAnimationFrame(fn); };
+    // posición natural (sin el desplazamiento del arrastre) de una pastilla
+    const natTop = (li) => { const t = li.style.transform; li.style.transform = ''; const y = li.getBoundingClientRect().top; li.style.transform = t; return y; };
+
     list.addEventListener('pointerdown', (e) => {
       const a = e.target.closest('a');
-      if (!a || e.button > 0) return;
+      if (!a || e.button > 0 || g) return;
       const li = a.parentElement;
       if (e.target.closest('.drag-h')) {
-        // ordenar: arrastrar el asa arriba o abajo
-        g = { mode: 'sort', li, y0: e.clientY, x0: e.clientX, id: e.pointerId };
-        li.classList.add('dragging');
+        // ordenar: la pastilla sigue al dedo y las demás se apartan
+        g = { mode: 'sort', li, id: e.pointerId, y: e.clientY, top: natTop(li) };
+        g.y0 = e.clientY;
+        li.classList.add('dragging'); sb.classList.add('gesturing');
         list.setPointerCapture(e.pointerId);
         e.preventDefault();
         return;
@@ -688,59 +697,88 @@
       if (state.sorting) return;
       g = { mode: 'maybe', a, li, x0: e.clientX, y0: e.clientY, id: e.pointerId };
     });
+
     list.addEventListener('pointermove', (e) => {
       if (!g || e.pointerId !== g.id) return;
-      const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
       if (g.mode === 'sort') {
-        g.li.style.transform = 'translateY(' + dy + 'px)';
-        // auto-desplazamiento cerca de los bordes de la lista
-        const sb = $('sidebar').getBoundingClientRect();
-        if (e.clientY > sb.bottom - 40) $('sidebar').scrollTop += 8;
-        else if (e.clientY < sb.top + 140) $('sidebar').scrollTop -= 8;
+        e.preventDefault();
+        g.y = e.clientY;
+        frame(sortStep);
         return;
       }
+      const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
       if (g.mode === 'maybe') {
-        if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { g = null; return; } // desplazamiento vertical
-        if (dx > 10 && dx > Math.abs(dy)) { g.mode = 'swipe'; list.setPointerCapture(e.pointerId); }
+        if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx)) { g = null; return; } // desplazamiento vertical de la lista
+        if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+          g.mode = 'swipe';
+          list.setPointerCapture(e.pointerId);
+          g.li.dataset.act = inSel(g.li.dataset.code) ? '✕ Quitar' : '● Seleccionar';
+          g.li.classList.add('swiping'); sb.classList.add('gesturing');
+        } else return;
       }
       if (g.mode === 'swipe') {
-        const d = Math.max(0, Math.min(dx, 120));
-        g.a.style.transform = 'translateX(' + d + 'px)';
-        g.a.classList.toggle('swipe-ok', dx >= SWIPE);
         e.preventDefault();
+        const d = dx > 0 ? Math.min(dx, 140) : Math.max(dx, -140); // a la derecha (o a la izquierda)
+        const ok = Math.abs(d) >= SWIPE;
+        frame(() => {
+          if (!g || g.mode !== 'swipe') return;
+          g.a.style.transform = 'translateX(' + d + 'px)';
+          g.li.classList.toggle('swipe-ok', ok);
+          g.li.classList.toggle('to-left', d < 0);
+        });
       }
     });
-    const end = (e) => {
+
+    function sortStep() {
+      if (!g || g.mode !== 'sort') return;
+      const li = g.li;
+      let dy = g.y - g.y0;
+      li.style.transform = 'translateY(' + dy + 'px)';
+      const mid = g.top + dy + li.offsetHeight / 2;
+      const prev = li.previousElementSibling, next = li.nextElementSibling;
+      const center = (x) => { const r = x.getBoundingClientRect(); return r.top + r.height / 2; };
+      if (prev && prev.dataset.code && mid < center(prev)) {
+        const vis = g.top + dy; list.insertBefore(li, prev);
+        g.top = natTop(li); g.y0 = g.y - (vis - g.top); li.style.transform = 'translateY(' + (vis - g.top) + 'px)';
+      } else if (next && next.dataset.code && mid > center(next)) {
+        const vis = g.top + dy; list.insertBefore(next, li);
+        g.top = natTop(li); g.y0 = g.y - (vis - g.top); li.style.transform = 'translateY(' + (vis - g.top) + 'px)';
+      }
+      // desplaza la lista si se arrastra cerca de los bordes
+      const r = sb.getBoundingClientRect();
+      if (g.y > r.bottom - 50) { sb.scrollTop += 10; frame(sortStep); }
+      else if (g.y < r.top + 160) { sb.scrollTop -= 10; frame(sortStep); }
+    }
+
+    function finish(e, cancel) {
       if (!g || (e && e.pointerId !== g.id)) return;
       const cur = g; g = null;
+      cancelAnimationFrame(raf);
+      sb.classList.remove('gesturing');
       if (cur.mode === 'swipe') {
-        suppress = true; setTimeout(() => { suppress = false; }, 350);
-        cur.a.style.transform = ''; cur.a.classList.remove('swipe-ok');
-        if (e && e.clientX - cur.x0 >= SWIPE) toggleSel(cur.li.dataset.code);
+        quiet();
+        const dx = e ? e.clientX - cur.x0 : 0;
+        cur.a.style.transform = '';
+        cur.li.classList.remove('swiping', 'swipe-ok', 'to-left');
+        if (!cancel && Math.abs(dx) >= SWIPE) toggleSel(cur.li.dataset.code);
+        else if (pendingRender) renderList();
       } else if (cur.mode === 'sort') {
-        suppress = true; setTimeout(() => { suppress = false; }, 350);
+        quiet();
         cur.li.classList.remove('dragging'); cur.li.style.transform = '';
-        // nueva posición según dónde se ha soltado
-        const lis = [...list.querySelectorAll('li[data-code]')].filter((x) => x !== cur.li);
-        const y = e ? e.clientY : 0;
-        let at = lis.findIndex((x) => { const r = x.getBoundingClientRect(); return y < r.top + r.height / 2; });
-        if (at < 0) at = lis.length;
-        const order = lis.map((x) => x.dataset.code);
-        order.splice(at, 0, cur.li.dataset.code);
-        // conserva las seleccionadas que no se ven (filtradas por la búsqueda)
-        const all = selCodes(), shown = new Set(order);
-        const rest = all.filter((c) => !shown.has(c));
+        // el nuevo orden es el de las pastillas en pantalla (sin repetir), más las seleccionadas que no se ven
+        const shown = [...list.querySelectorAll('li[data-code]')].map((x) => x.dataset.code);
+        const order = shown.filter((c, i) => shown.indexOf(c) === i && inSel(c));
+        const rest = selCodes().filter((c) => !order.includes(c));
         setSelection(order.concat(rest));
       }
-    };
-    list.addEventListener('pointerup', end);
-    list.addEventListener('pointercancel', (e) => {
-      if (g && g.mode === 'swipe') { g.a.style.transform = ''; g.a.classList.remove('swipe-ok'); }
-      if (g && g.mode === 'sort') { g.li.classList.remove('dragging'); g.li.style.transform = ''; }
-      g = null;
-    });
+    }
+    list.addEventListener('pointerup', (e) => finish(e, false));
+    list.addEventListener('pointercancel', (e) => finish(e, true));
+    // solo cuenta si la lista pierde el agarre (no cuando la pastilla se lo cede a la lista)
+    list.addEventListener('lostpointercapture', (e) => { if (e.target === list && g && g.mode !== 'maybe' && e.pointerId === g.id) setTimeout(() => finish(e, true), 0); });
     // tras deslizar u ordenar no se abre la canción
     list.addEventListener('click', (e) => { if (suppress || state.sorting) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+    window.SelGesture = { active: () => !!g && g.mode !== 'maybe' };
   })();
 
   // ---------- Móvil: lista de canciones en un panel deslizable desde abajo ----------
