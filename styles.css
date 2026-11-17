@@ -694,3 +694,9 @@ body.screen-mode > *:not(#screen):not(.live-bar):not(.live-panel) { visibility: 
 @media (pointer: coarse) { .song-list a { touch-action: none; } }
 .sidebar.sorting .song-list a { touch-action: none; cursor: grab; }
 .sidebar.sorting .song-list a .t, .sidebar.sorting .song-list a .code { pointer-events: none; }
+
+/* Mientras la lista se desplaza las pastillas son solo texto: sin toques, resaltados ni animaciones */
+.song-list a { -webkit-tap-highlight-color: transparent; }
+.sidebar.scrolling .song-list a { pointer-events: none; transition: none !important; }
+.sidebar.scrolling .song-list a:not(.active) { background: var(--bg) !important; border-color: var(--line) !important; }
+.sidebar.scrolling .song-list { will-change: transform; }

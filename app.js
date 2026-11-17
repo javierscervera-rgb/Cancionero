@@ -718,6 +718,7 @@
         } else if (g.touch) {
           g.mode = 'scroll'; // desplazamiento vertical de la lista (lo hace la web, con inercia)
           list.setPointerCapture(e.pointerId);
+          sb.classList.add('scrolling'); // mientras se desplaza, las pastillas son solo texto (no botones)
         } else { g = null; return; }
       }
       if (g.mode === 'scroll') {
@@ -769,6 +770,7 @@
       if (cur.mode === 'scroll') {
         quiet();
         if (!cancel && performance.now() - cur.t < 80) fling(-cur.v * 16);
+        else sb.classList.remove('scrolling');
         return;
       }
       if (cur.mode === 'swipe') {
@@ -798,14 +800,15 @@
     let flingRaf = 0;
     function fling(v) {
       stopFling();
+      sb.classList.add('scrolling');
       const stepF = () => {
-        if (Math.abs(v) < 0.4) return;
+        if (Math.abs(v) < 0.4) { sb.classList.remove('scrolling'); return; }
         sb.scrollTop += v; v *= 0.95;
         flingRaf = requestAnimationFrame(stepF);
       };
       flingRaf = requestAnimationFrame(stepF);
     }
-    function stopFling() { cancelAnimationFrame(flingRaf); }
+    function stopFling() { cancelAnimationFrame(flingRaf); sb.classList.remove('scrolling'); }
     window.SelGesture = { active: () => !!g && g.mode !== 'maybe' && g.mode !== 'scroll' };
   })();
 
