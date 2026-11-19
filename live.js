@@ -307,7 +307,25 @@
     updateLetrasUi();
   }
 
+  let luFs = false;
+  function lockPortrait() {
+    if (!document.body.classList.contains('letras-ui')) return;
+    const lock = () => { try { screen.orientation && screen.orientation.lock && screen.orientation.lock('portrait').catch(() => {}); } catch (e) {} };
+    const de = document.documentElement;
+    if (!document.fullscreenElement && de.requestFullscreen) {
+      de.requestFullscreen({ navigationUI: 'hide' }).then(() => { luFs = true; lock(); }).catch(lock);
+    } else lock();
+  }
+  function unlockPortrait() {
+    try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch (e) {}
+    if (luFs && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    luFs = false;
+  }
+  let luWas = false;
   function updateLetrasUi() {
+    const on = document.body.classList.contains('letras-ui');
+    if (luWas && !on) unlockPortrait();
+    luWas = on;
     const b = $('luBlank');
     if (!b) return;
     const hidden = window.App.blank();
@@ -381,6 +399,7 @@
     const lu = document.createElement('div');
     lu.id = 'letrasUi'; lu.className = 'letras-ui-ctl';
     lu.innerHTML = `
+      <div class="lu-block" aria-hidden="true"></div>
       <button class="lu-x" id="luExit" aria-label="Salir del modo Letras" title="Salir del modo Letras">✕</button>
       <div class="lu-arrows">
         <button id="luUp" aria-label="Párrafo anterior">▲</button>
@@ -389,9 +408,15 @@
       <button class="lu-blank" id="luBlank" aria-pressed="false"></button>`;
     document.body.appendChild(lu);
     $('luExit').onclick = () => setMode('off');
-    $('luUp').onclick = () => window.App.step(-1);
-    $('luDown').onclick = () => window.App.step(1);
-    $('luBlank').onclick = () => window.App.setBlank(!window.App.blank());
+    const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+    $('luUp').onclick = () => { buzz(25); window.App.step(-1); };
+    $('luDown').onclick = () => { buzz(25); window.App.step(1); };
+    $('luBlank').onclick = () => { const hide = !window.App.blank(); buzz(hide ? 300 : 25); window.App.setBlank(hide); };
+    // Bloquear la rotación: Android solo lo permite en pantalla completa y tras un toque
+    lu.addEventListener('pointerdown', lockPortrait, true);
+    // Nada más se puede tocar: sin scroll, sin zoom, sin menú contextual
+    const stop = e => { if (document.body.classList.contains('letras-ui')) e.preventDefault(); };
+    ['touchmove', 'gesturestart', 'gesturechange', 'dblclick', 'contextmenu', 'wheel'].forEach(t => document.addEventListener(t, stop, { passive: false }));
     window.App.onView(updateLetrasUi);
 
     const bar = document.createElement('div');

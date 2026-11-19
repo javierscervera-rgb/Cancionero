@@ -790,3 +790,15 @@ body.letras-ui .sheet .para { font-size: 1.15em; }
 }
 .lu-blank .lu-ico { font-size: 20px; }
 .lu-blank[aria-pressed="true"] { background: #c62828; border-color: #c62828; color: #fff; }
+
+/* Letras en el móvil: nada más se puede tocar, ni scroll ni zoom */
+body.letras-ui { overflow: hidden; touch-action: none; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+body.letras-ui .content { overflow: hidden !important; touch-action: none; }
+.lu-block { position: fixed; inset: 0; z-index: 39; touch-action: none; background: transparent; }
+.lu-x, .lu-arrows, .lu-blank { -webkit-tap-highlight-color: transparent; }
+/* Si el móvil no deja bloquear el giro, en horizontal se pide volver a vertical */
+@media (orientation: landscape) and (max-height: 500px) {
+  body.letras-ui .lu-block { background: var(--bg); display: grid; place-items: center; }
+  body.letras-ui .lu-block::after { content: '↻  Gira el móvil a vertical'; font-size: 20px; font-weight: 700; color: var(--ink); }
+  body.letras-ui .lu-x { z-index: 41; }
+}
