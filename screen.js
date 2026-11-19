@@ -106,9 +106,10 @@
   function fit() {
     if (!on) return;
     const stage = $('scrStage'), txt = $('scrText');
-    const max = cfg.size * window.innerHeight / 100;
+    const p = A.pres ? A.pres() : { scale: 1, mode: 'song' };
+    const max = cfg.size * p.scale * (p.mode === 'cita' ? 0.6 : 1) * window.innerHeight / 100;
     txt.style.fontSize = max + 'px';
-    const fits = () => txt.scrollHeight <= stage.clientHeight + 1 && txt.scrollWidth <= stage.clientWidth + 1;
+    const fits = () => txt.scrollHeight + (txt.offsetHeight - txt.clientHeight) <= stage.clientHeight + 1 && txt.scrollWidth + (txt.offsetWidth - txt.clientWidth) <= stage.clientWidth + 1;
     if (fits()) return;
     // búsqueda binaria del mayor tamaño que cabe
     let lo = 6, hi = max;
@@ -126,6 +127,7 @@
     stage.style.top = cfg.t + 'vh'; stage.style.bottom = cfg.b + 'vh';
     stage.style.left = cfg.l + 'vw'; stage.style.right = cfg.r + 'vw';
     const txt = $('scrText');
+    el.classList.toggle('cita', !!(A.pres && A.pres().mode === 'cita'));
     txt.style.fontFamily = FONTS[cfg.font].css;
     txt.style.fontWeight = cfg.bold ? '700' : '400';
     const c = content();

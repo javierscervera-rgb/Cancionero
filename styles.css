@@ -802,3 +802,23 @@ body.letras-ui .content { overflow: auto !important; touch-action: pan-x pan-y; 
   body.letras-ui .lu-block::after { content: '↻  Gira el móvil a vertical'; font-size: 20px; font-weight: 700; color: var(--ink); }
   body.letras-ui .lu-x { z-index: 41; }
 }
+
+/* Pantalla completa en modo Cita: letra más pequeña, centrada y dentro de un recuadro */
+.screen.cita .scr-text { border: 3px solid #fff; padding: .9em 1.3em; border-radius: 6px; text-align: center; }
+.screen.cita .scr-text:empty { border: 0; padding: 0; }
+
+/* Desplegable de presentación (debajo del engranaje) */
+.tb.blank-btn.pres-open { border-color: var(--accent); }
+.pres-menu { position: fixed; z-index: 70; width: 230px; padding: 10px; border-radius: 14px; display: grid; gap: 10px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: 0 14px 30px -14px rgba(0,0,0,.45); color: var(--ink); }
+.pres-menu[hidden] { display: none; }
+.pres-menu .pm-blank { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 10px; padding: 11px 12px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.pres-menu .pm-blank[aria-pressed="true"] { background: #c62828; border-color: #c62828; color: #fff; }
+.pres-menu .pm-row { display: grid; grid-template-columns: auto 1fr auto auto auto; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.pres-menu .pm-row button { width: 36px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-weight: 700; cursor: pointer; }
+.pres-menu .pm-row output { min-width: 44px; text-align: center; color: var(--ink); font-variant-numeric: tabular-nums; }
+.pres-menu .pm-seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.pres-menu .pm-seg button { border: 0; background: var(--bg); color: var(--ink); padding: 9px 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.pres-menu .pm-seg button + button { border-left: 1px solid var(--line); }
+.pres-menu .pm-seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.pres-menu .pm-lbl { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: -4px; }

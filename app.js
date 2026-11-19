@@ -664,6 +664,18 @@
   }
   $('blankBtn').onclick = () => setBlank(!state.blank);
 
+  // ---------- Presentación en la pantalla completa: tamaño y modo (Canción / Cita) ----------
+  const presNorm = (p) => ({ scale: Math.max(0.5, Math.min(2, Math.round((+(p && p.scale) || 1) * 10) / 10)), mode: p && p.mode === 'cita' ? 'cita' : 'song' });
+  state.pres = presNorm(store.get('pres', {}));
+  function setPres(p, fromSync) {
+    const n = presNorm(Object.assign({}, state.pres, p));
+    if (n.scale === state.pres.scale && n.mode === state.pres.mode) return;
+    state.pres = n;
+    store.set('pres', n);
+    notifyView();
+    if (!fromSync) notify('pres');
+  }
+
   // ---------- Comentario de la canción (no se ve en el modo Pantalla) ----------
   const noteOf = (s) => (notes[s.code] !== undefined ? notes[s.code] : (s.comment || ''));
   function renderNote(s) {
@@ -1070,6 +1082,8 @@
     onChange(fn) { listeners.push(fn); },
     blank: () => state.blank,
     setBlank: (b) => setBlank(b),
+    pres: () => Object.assign({}, state.pres),
+    setPres: (p, fromSync) => setPres(p, fromSync),
     refit: fitSheet,
     // Para el modo Pantalla (screen.js)
     lyricParas: () => lyricParas(),

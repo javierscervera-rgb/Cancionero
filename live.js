@@ -45,7 +45,7 @@
   function snapshot() {
     const s = window.App.getState();
     if (live.mode === 'letras') return { v: 2, kind: 'para', seq: ++live.seq, song: live.last ? live.last.song : '', para: live.last ? live.last.para : null, sub: live.last ? live.last.sub || 0 : 0, pt: live.last ? live.last.pt : 0, blank: s.blank, bt: live.blankT };
-    return { v: 2, seq: ++live.seq, song: s.song, shift: s.shift, para: s.para, sub: s.sub, mc: window.App.maxChars(), pt: live.paraT, blank: s.blank, bt: live.blankT, rv: window.Cloud ? window.Cloud.rev() : 0 };
+    return { v: 2, seq: ++live.seq, song: s.song, shift: s.shift, para: s.para, sub: s.sub, mc: window.App.maxChars(), pt: live.paraT, blank: s.blank, bt: live.blankT, ps: window.App.pres(), rv: window.Cloud ? window.Cloud.rev() : 0 };
   }
   const followerMode = () => live.mode === 'receptor' || live.mode === 'letras';
   function send() {
@@ -103,6 +103,8 @@
     if (window.Cloud && Number.isInteger(d.rv)) window.Cloud.behind(d.rv);
     // mismo máximo de caracteres que el líder, para que los párrafos coincidan
     if (Number.isInteger(d.mc) && d.mc !== window.App.maxChars()) window.App.setMaxChars(d.mc, false);
+    // tamaño y modo de la letra en la pantalla completa, como los decide el líder
+    if (d.ps && typeof d.ps === 'object') window.App.setPres(d.ps, true);
     const prev = live.last;
     live.last = { song: d.song, shift: d.shift, para, sub, pt };
     // si Letras pasó un párrafo más reciente de esta canción, se mantiene
@@ -132,6 +134,7 @@
 
   // Cambios hechos por la propia persona
   window.App.onChange((why) => {
+    if (why === 'pres') { if (live.mode === 'emisor') send(); return; }
     if (why === 'blank') {
       // poner o quitar la pantalla en negro: solo el líder o Letras lo envían
       live.blankT = Date.now();
