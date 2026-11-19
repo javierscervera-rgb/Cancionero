@@ -774,7 +774,7 @@ body.letras-ui .sheet .para { font-size: 1.15em; }
   border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 20px; cursor: pointer; box-shadow: 0 6px 16px -8px rgba(0,0,0,.4);
 }
 .lu-arrows {
-  position: fixed; left: 0; bottom: 0; width: 25vw; height: 25vh; z-index: 40; display: grid; grid-template-rows: 1fr 1fr; gap: 6px;
+  position: fixed; left: 0; right: 0; bottom: 0; width: 100vw; height: 25vh; z-index: 40; display: grid; grid-template-rows: 1fr 1fr; gap: 6px;
   padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
 }
 .lu-arrows button {
@@ -783,7 +783,7 @@ body.letras-ui .sheet .para { font-size: 1.15em; }
 }
 .lu-arrows button:active { background: var(--accent); color: #fff; }
 .lu-blank {
-  position: fixed; z-index: 40; left: calc(37.5vw - 7.5vw); bottom: calc(12.5vh - 7.5vw + env(safe-area-inset-bottom) / 2);
+  position: fixed; z-index: 40; right: 10px; bottom: calc(25vh + 10px);
   width: 15vw; height: 15vw; min-width: 56px; min-height: 56px; border-radius: 16px; border: 1px solid var(--line);
   background: var(--panel); color: var(--ink); cursor: pointer; display: grid; place-items: center; align-content: center; gap: 2px;
   font-size: 10px; font-weight: 700; line-height: 1.1; padding: 2px; box-shadow: 0 6px 16px -10px rgba(0,0,0,.45); touch-action: manipulation;
