@@ -724,3 +724,35 @@ body.screen-mode > *:not(#screen):not(.live-bar):not(.live-panel) { visibility: 
 .lm-ctl { display: flex; align-items: center; gap: 10px; }
 .lm-ctl .pill { min-width: 40px; font-size: 18px; font-weight: 700; }
 .lm-ctl b { min-width: 120px; text-align: center; }
+
+/* ---------- Ángelus / Regina Coeli ---------- */
+.angelus-btn { display: none; }
+body[data-list="parroquia"] .angelus-btn { display: inline-flex; }
+.angelus-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ang-menu { position: fixed; z-index: 90; display: grid; gap: 4px; min-width: 190px; padding: 8px; border-radius: 14px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: 0 14px 30px -14px rgba(0,0,0,.45); }
+.ang-menu[hidden] { display: none; }
+.ang-menu button { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 10px; padding: 9px 12px; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; }
+.ang-menu button:hover { border-color: var(--accent); color: var(--accent); }
+.ang-menu button.off { color: #c62828; }
+.ang-msg { margin: 4px 2px 0; font-size: 12.5px; color: #c62828; max-width: 240px; line-height: 1.35; }
+.ang-view { position: absolute; inset: 0; z-index: 3; display: grid; grid-template-rows: 2fr 1fr; background: #000; }
+.ang-view[hidden] { display: none; }
+.screen.angelus-on .scr-stage, .screen.angelus-on .scr-line { display: none; }
+.ang-video { position: relative; background: #000; }
+.ang-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.ang-text { position: relative; background: #fff; color: #000; padding: 1.2vh 2vw 1.2vh; min-height: 0; overflow: hidden;
+  font-family: Georgia, "Times New Roman", serif; }
+.ang-sel { position: absolute; top: calc(200% / 3); right: 1vw; transform: translateY(calc(-100% - 8px)); z-index: 4; display: flex; border: 1px solid #bbb; border-radius: 999px; overflow: hidden; background: #fff; }
+.ang-sel button { border: 0; background: #fff; color: #444; font: 600 11px/1 var(--sans); padding: 5px 9px; cursor: pointer; }
+.ang-sel button.on { background: #000; color: #fff; }
+.screen.clean .ang-sel { opacity: .5; }
+.ang-sel:hover { opacity: 1; }
+.ang-cols { height: 100%; display: grid; gap: 3vw; }
+.ang-cols.two { grid-template-columns: 1fr 1fr; }
+.ang-cols.one { grid-template-columns: 1fr; }
+.ang-col { min-width: 0; height: 100%; overflow: hidden; line-height: 1.28; }
+.ang-col p { margin: 0 0 .45em; }
+.ang-col i { color: #333; }
+.ang-col .ttl { font-weight: 700; margin-bottom: .2em; }
+.ang-cols.two .ang-col + .ang-col { border-left: 1px solid #ddd; padding-left: 3vw; }

@@ -246,6 +246,7 @@
     const changed = id !== state.list;
     state.list = id;
     store.set('list', id);
+    document.body.dataset.list = id;
     if (changed) { state.category = null; state.letter = null; }
     renderLists(); renderChips(); renderList();
     if (changed && !keepSong && state.current && state.current.list !== id) location.hash = '';
@@ -1415,6 +1416,7 @@
     else if (e.key === 'ArrowLeft' && SONGS[state.current.index - 1]) location.hash = '#' + SONGS[state.current.index - 1].code;
   });
 
+  document.body.dataset.list = state.list;
   renderLists();
   updateNotationBtn();
   renderChips();

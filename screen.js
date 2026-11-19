@@ -174,6 +174,8 @@
   function setClean(c) {
     clean = c;
     el.classList.toggle('clean', c);
+    if (window.Live && window.Live.setFs) window.Live.setFs(c); // los demás saben que esta pantalla está en pantalla completa
+    document.dispatchEvent(new CustomEvent('screen-clean', { detail: c }));
     document.body.classList.toggle('screen-clean', c);
     if (!c) wake();
     setTimeout(fit, 60);
@@ -303,6 +305,8 @@
 
   $('scrBlank').onclick = (e) => { e.stopPropagation(); A.setBlank(!A.blank()); };
   A.onView(render);
+
+  window.ScreenMode = { el, isOn: () => on, isClean: () => clean, refit: () => fit() };
 
   // Botón en la barra de controles
   const btn = $('screenBtn');

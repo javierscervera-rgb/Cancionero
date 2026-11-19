@@ -127,3 +127,10 @@ Solo hay una versión del cancionero: la guardada en Google Drive (cuenta de la 
 
 - En el Cancionero Parroquia, la colección «⛪️Textos Misa» (la primera) contiene P120–P127: Credo apostólico, Credo Niceno, Primera lectura, Salmo responsorial, Segunda lectura, Evangelio, Gloria y «El Señor reciba…». Las lecturas largas están partidas en párrafos de unas pocas frases para proyectarlas.
 - Las colecciones oficiales nuevas que se añadan a los archivos `songs*.js` se suben solas a Drive (operación `listCats` del script).
+
+## Ángelus / Regina Coeli
+
+- Con el Cancionero Parroquia elegido aparece en la cabecera el botón **Ángelus** (menú: Ángelus, Regina Coeli, Quitar).
+- Solo actúa si hay algún dispositivo con la pantalla completa activada (este mismo o alguno conectado a la misma sala del directo); si no, avisa y no hace nada.
+- En esas pantallas completas: arriba (2/3) el directo de YouTube (`5lfWxoaPGRg`, empieza sin sonido) y abajo (1/3), con letra negra sobre blanco, la oración en latín: Ángelus en dos columnas (oración | Ave Maria y Gloria Patri) o Regina Cæli completo. Un selector pequeño en la esquina del vídeo cambia entre las dos.
+- El estado viaja en la presencia de cada dispositivo de la sala (`fs` = pantalla completa, `ang` = estado del Ángelus).

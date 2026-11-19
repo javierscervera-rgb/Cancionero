@@ -181,6 +181,7 @@
       else connectP2P();
     }
     lockView(m === 'emisor' || m === 'letras');
+    setTimeout(sharePresence, 300);
     live.mode = m;
     live.paused = false;
     live.last = null;
@@ -432,7 +433,18 @@
   }
 
   // Interfaz para screen.js: en pantalla completa el receptor solo ve lo del emisor
+  // ---- Pantalla completa y Ángelus: se comparten por la presencia de cada dispositivo ----
+  function sharePresence() {
+    if (!live.room || live.mode === 'off') return;
+    live.room.presence({ fs: live.fs ? true : null, ang: live.ang || null }).catch(() => {});
+  }
   window.Live = {
+    setFs(on) { live.fs = !!on; sharePresence(); },
+    // dispositivos (otros) con la pantalla completa activada
+    fullscreenPeers: () => peersList().filter((p) => !p.sameTab && p.presence && p.presence.fs).length,
+    setAngelus(st) { live.ang = st; sharePresence(); },
+    angelusFromPeers: () => peersList().filter((p) => !p.sameTab && p.presence && p.presence.ang).map((p) => p.presence.ang),
+    connected: () => !!live.room && live.mode !== 'off',
     receiving: () => live.mode === 'receptor',
     resume() { if (live.mode === 'receptor' && live.paused) { live.paused = false; applyLast(); render(); } }
   };
@@ -451,6 +463,7 @@
         else if (!live.following) { const e = pickEmitter(); if (e) setFollowing(e); }
       }
       render();
+      if (window.Angelus) window.Angelus.sync();
     }, () => {});
   }
 
