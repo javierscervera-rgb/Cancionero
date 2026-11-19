@@ -1,59 +1,33 @@
-// Desplegable de presentación, debajo del engranaje: mostrar/ocultar la letra,
-// tamaño de la letra en la pantalla completa y modo (Canción / Cita).
-// Lo usa quien dirige la pantalla (líder o fuera del directo). En «Letras» el botón solo oculta/muestra.
+// Presentación en la pantalla completa (debajo del engranaje). Igual que el engranaje:
+// el primer botón despliega hacia abajo los demás y se quedan abiertos hasta volver a pulsarlo.
+// Ocultar/mostrar la letra, tamaño de la letra (A+/A−) y modo Canción / Cita.
+// Tamaño y modo los decide el líder (o quien está fuera del directo); en «Letras» solo se oculta/muestra.
 (function () {
   'use strict';
   const A = window.App, $ = (id) => document.getElementById(id);
-  const btn = $('blankBtn');
-  if (!A || !btn || !A.pres) return;
-  const menu = document.createElement('div');
-  menu.className = 'pres-menu'; menu.id = 'presMenu'; menu.hidden = true;
-  menu.setAttribute('role', 'dialog'); menu.setAttribute('aria-label', 'Presentación en la pantalla completa');
-  menu.innerHTML = `
-    <button class="pm-blank" id="pmBlank" aria-pressed="false"></button>
-    <div class="pm-row"><span>Tamaño</span><span></span>
-      <button id="pmDown" aria-label="Letra más pequeña">A−</button><output id="pmSize"></output><button id="pmUp" aria-label="Letra más grande">A+</button></div>
-    <div class="pm-lbl">Modo</div>
-    <div class="pm-seg"><button data-mode="song">Canción</button><button data-mode="cita">Cita</button></div>`;
-  document.body.appendChild(menu);
-
-  const lettersOnly = () => document.body.classList.contains('lyrics-op');
+  const btn = $('presBtn'), items = $('presItems');
+  if (!A || !btn || !items || !A.pres) return;
+  const KEY = 'cm:presOpen';
+  function setOpen(o) {
+    items.classList.toggle('open', o);
+    btn.setAttribute('aria-expanded', String(o));
+    try { localStorage.setItem(KEY, o ? '1' : '0'); } catch (e) { /* nada */ }
+  }
+  let o0 = false; try { o0 = localStorage.getItem(KEY) === '1'; } catch (e) { /* nada */ }
+  setOpen(o0);
+  btn.onclick = () => setOpen(!items.classList.contains('open'));
   function update() {
-    const p = A.pres(), b = A.blank();
-    $('pmBlank').setAttribute('aria-pressed', String(b));
-    $('pmBlank').textContent = b ? '👁  Mostrar letra' : '⊘  Ocultar letra';
+    const p = A.pres();
     $('pmSize').textContent = Math.round(p.scale * 100) + '%';
     $('pmDown').disabled = p.scale <= 0.5; $('pmUp').disabled = p.scale >= 2;
-    menu.querySelectorAll('.pm-seg button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.mode === p.mode)));
+    $('pmSong').setAttribute('aria-pressed', String(p.mode === 'song'));
+    $('pmCita').setAttribute('aria-pressed', String(p.mode === 'cita'));
+    btn.classList.toggle('blanked', A.blank());
   }
-  function place() {
-    const r = btn.getBoundingClientRect(), w = menu.offsetWidth || 230;
-    let left = r.left - w - 8;
-    if (left < 8) left = Math.min(window.innerWidth - w - 8, r.left);
-    const top = left === r.left - w - 8 ? r.top : r.bottom + 8;
-    menu.style.left = Math.max(8, left) + 'px';
-    menu.style.top = Math.max(8, Math.min(window.innerHeight - menu.offsetHeight - 8, top)) + 'px';
-  }
-  function open(o) {
-    menu.hidden = !o;
-    btn.classList.toggle('pres-open', o);
-    btn.setAttribute('aria-expanded', String(o));
-    if (o) { update(); place(); }
-  }
-  btn.setAttribute('aria-haspopup', 'dialog');
-  btn.onclick = (e) => {
-    e.stopPropagation();
-    if (lettersOnly()) { A.setBlank(!A.blank()); return; }
-    open(menu.hidden);
-  };
-  $('pmBlank').onclick = () => A.setBlank(!A.blank());
   $('pmDown').onclick = () => A.setPres({ scale: A.pres().scale - 0.1 });
   $('pmUp').onclick = () => A.setPres({ scale: A.pres().scale + 0.1 });
-  menu.querySelectorAll('.pm-seg button').forEach((x) => { x.onclick = () => A.setPres({ mode: x.dataset.mode }); });
-  menu.addEventListener('click', (e) => e.stopPropagation());
-  document.addEventListener('click', () => { if (!menu.hidden) open(false); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) open(false); });
-  window.addEventListener('resize', () => { if (!menu.hidden) place(); });
-  // si el botón se oculta (p. ej. al pasar a receptor), se cierra el desplegable
-  A.onView(() => { if (!menu.hidden) { if (!btn.offsetParent) open(false); else update(); } });
+  $('pmSong').onclick = () => A.setPres({ mode: 'song' });
+  $('pmCita').onclick = () => A.setPres({ mode: 'cita' });
+  A.onView(update);
+  update();
 })();

@@ -107,7 +107,7 @@
     if (!on) return;
     const stage = $('scrStage'), txt = $('scrText');
     const p = A.pres ? A.pres() : { scale: 1, mode: 'song' };
-    const max = cfg.size * p.scale * (p.mode === 'cita' ? 0.6 : 1) * window.innerHeight / 100;
+    const max = cfg.size * p.scale * (p.mode === 'cita' ? 0.42 : 1) * window.innerHeight / 100;
     txt.style.fontSize = max + 'px';
     const fits = () => txt.scrollHeight + (txt.offsetHeight - txt.clientHeight) <= stage.clientHeight + 1 && txt.scrollWidth + (txt.offsetWidth - txt.clientWidth) <= stage.clientWidth + 1;
     if (fits()) return;
