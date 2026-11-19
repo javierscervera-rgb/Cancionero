@@ -415,8 +415,8 @@
     // Bloquear la rotación: Android solo lo permite en pantalla completa y tras un toque
     lu.addEventListener('pointerdown', lockPortrait, true);
     // Nada más se puede tocar: sin scroll, sin zoom, sin menú contextual
-    const stop = e => { if (document.body.classList.contains('letras-ui')) e.preventDefault(); };
-    ['touchmove', 'gesturestart', 'gesturechange', 'dblclick', 'contextmenu', 'wheel'].forEach(t => document.addEventListener(t, stop, { passive: false }));
+    const stop = e => { if (document.body.classList.contains('letras-ui') && !(e.type === 'touchmove' && e.touches && e.touches.length === 1 && e.target.closest && e.target.closest('#content'))) e.preventDefault(); };
+    ['touchmove', 'gesturestart', 'gesturechange', 'dblclick', 'contextmenu'].forEach(t => document.addEventListener(t, stop, { passive: false }));
     window.App.onView(updateLetrasUi);
 
     const bar = document.createElement('div');
