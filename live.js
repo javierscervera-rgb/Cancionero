@@ -302,7 +302,19 @@
     document.body.classList.toggle('live-on', live.mode !== 'off');
     document.body.classList.toggle('receiving', followerMode()); // el tono lo decide el líder
     document.body.classList.toggle('lyrics-op', live.mode === 'letras');
+    // móvil en «Letras» con un líder conectado: solo la letra y los controles mínimos
+    document.body.classList.toggle('letras-ui', live.mode === 'letras' && ems.length > 0 && matchMedia('(max-width: 820px)').matches);
+    updateLetrasUi();
   }
+
+  function updateLetrasUi() {
+    const b = $('luBlank');
+    if (!b) return;
+    const hidden = window.App.blank();
+    b.setAttribute('aria-pressed', String(hidden));
+    b.innerHTML = hidden ? '<span class="lu-ico">👁</span><span>Mostrar letra</span>' : '<span class="lu-ico">⊘</span><span>Ocultar letra</span>';
+  }
+  window.matchMedia('(max-width: 820px)').addEventListener('change', () => render());
 
   function expandBar() {
     const bar = $('liveBar');
@@ -364,6 +376,23 @@
       <p class="live-status" id="liveStatus"></p>
       <p class="live-flash" id="liveFlash" hidden></p>`;
     document.body.appendChild(panel);
+
+    // ---- Controles del modo «Letras» en el móvil ----
+    const lu = document.createElement('div');
+    lu.id = 'letrasUi'; lu.className = 'letras-ui-ctl';
+    lu.innerHTML = `
+      <button class="lu-x" id="luExit" aria-label="Salir del modo Letras" title="Salir del modo Letras">✕</button>
+      <div class="lu-arrows">
+        <button id="luUp" aria-label="Párrafo anterior">▲</button>
+        <button id="luDown" aria-label="Párrafo siguiente">▼</button>
+      </div>
+      <button class="lu-blank" id="luBlank" aria-pressed="false"></button>`;
+    document.body.appendChild(lu);
+    $('luExit').onclick = () => setMode('off');
+    $('luUp').onclick = () => window.App.step(-1);
+    $('luDown').onclick = () => window.App.step(1);
+    $('luBlank').onclick = () => window.App.setBlank(!window.App.blank());
+    window.App.onView(updateLetrasUi);
 
     const bar = document.createElement('div');
     bar.id = 'liveBar'; bar.className = 'live-bar'; bar.hidden = true;

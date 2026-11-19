@@ -756,3 +756,37 @@ body[data-list="parroquia"] .angelus-btn { display: inline-flex; }
 .ang-col i { color: #333; }
 .ang-col .ttl { font-weight: 700; margin-bottom: .2em; }
 .ang-cols.two .ang-col + .ang-col { border-left: 1px solid #ddd; padding-left: 3vw; }
+
+/* ---------- Móvil en modo «Letras» con líder: solo la letra ---------- */
+.letras-ui-ctl { display: none; }
+body.letras-ui .letras-ui-ctl { display: block; }
+body.letras-ui .top, body.letras-ui .chipbar, body.letras-ui .sidebar, body.letras-ui .toolbar,
+body.letras-ui .live-bar, body.letras-ui .live-panel, body.letras-ui .song-head, body.letras-ui .pager,
+body.letras-ui .song-note, body.letras-ui #variants, body.letras-ui .sb-resize { display: none !important; }
+body.letras-ui .layout { height: 100vh; height: 100dvh; grid-template-columns: minmax(0, 1fr); }
+body.letras-ui .content { padding: 64px 14px 30vh; }
+body.letras-ui .sheet { margin-top: 0; }
+body.letras-ui .sheet .cl, body.letras-ui .sheet .u > .ch { display: none; }
+body.letras-ui .sheet .u { padding-top: 0; }
+body.letras-ui .sheet .para { font-size: 1.15em; }
+.lu-x {
+  position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 10px; z-index: 40; width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 20px; cursor: pointer; box-shadow: 0 6px 16px -8px rgba(0,0,0,.4);
+}
+.lu-arrows {
+  position: fixed; left: 0; bottom: 0; width: 25vw; height: 25vh; z-index: 40; display: grid; grid-template-rows: 1fr 1fr; gap: 6px;
+  padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+}
+.lu-arrows button {
+  border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--accent); font-size: 28px; cursor: pointer;
+  box-shadow: 0 6px 16px -10px rgba(0,0,0,.45); touch-action: manipulation;
+}
+.lu-arrows button:active { background: var(--accent); color: #fff; }
+.lu-blank {
+  position: fixed; z-index: 40; left: calc(37.5vw - 7.5vw); bottom: calc(12.5vh - 7.5vw + env(safe-area-inset-bottom) / 2);
+  width: 15vw; height: 15vw; min-width: 56px; min-height: 56px; border-radius: 16px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--ink); cursor: pointer; display: grid; place-items: center; align-content: center; gap: 2px;
+  font-size: 10px; font-weight: 700; line-height: 1.1; padding: 2px; box-shadow: 0 6px 16px -10px rgba(0,0,0,.45); touch-action: manipulation;
+}
+.lu-blank .lu-ico { font-size: 20px; }
+.lu-blank[aria-pressed="true"] { background: #c62828; border-color: #c62828; color: #fff; }
