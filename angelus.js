@@ -34,7 +34,7 @@
   const view = document.createElement('div');
   view.id = 'angelusView'; view.className = 'ang-view'; view.hidden = true;
   view.innerHTML = `
-    <div class="ang-video"><div class="ang-move" id="angVideo"></div><div class="ang-pan" id="angPan" title="Arrastra para mover · rueda o pellizco para acercar · doble clic para volver"></div></div>
+    <div class="ang-video"><div class="ang-move" id="angVideo"></div><div class="ang-pan" id="angPan" title="Arrastra para mover · rueda o pellizco para acercar · doble clic para volver"></div><button class="ang-snd" id="angSnd" aria-label="Sonido del vídeo" title="Sonido del vídeo">🔊</button></div>
     <div class="ang-text"><div class="ang-cols" id="angCols"></div></div>
     <div class="ang-sel" role="group" aria-label="Oración">
       <button data-k="angelus">Ángelus</button><button data-k="regina">Regina Coeli</button>
@@ -113,6 +113,24 @@
     window.addEventListener('resize', () => { if (!view.hidden) applyCam(); });
   })();
 
+  // ---------- Sonido: activo por defecto ----------
+  let muted = null; // null = aún no decidido por la persona → con volumen
+  function ytCmd(func, args) {
+    const fr = $('angVideo') && $('angVideo').querySelector('iframe');
+    if (!fr || !fr.contentWindow) return;
+    try {
+      fr.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1 }), '*');
+      fr.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args: args || [] }), '*');
+    } catch (e) { /* nada */ }
+  }
+  function setSound(on) {
+    if (on) { ytCmd('unMute'); ytCmd('setVolume', [100]); ytCmd('playVideo'); } else ytCmd('mute');
+    const b = $('angSnd'); if (b) { b.textContent = on ? '🔊' : '🔇'; b.classList.toggle('off', !on); }
+  }
+  $('angSnd').addEventListener('click', (e) => { e.stopPropagation(); muted = !(muted === true); setSound(!muted); });
+  // si el navegador no dejó poner el sonido solo, el primer toque sobre el vídeo lo activa
+  frame().addEventListener('pointerdown', () => { if (muted !== true) setSound(true); });
+
   function fitCol(col) {
     // el mayor tamaño de letra con el que cabe la columna
     let lo = 8, hi = 64;
@@ -133,7 +151,10 @@
     if (!show) { if (vid.firstChild) vid.innerHTML = ''; return; } // quita el vídeo (y su sonido)
     if (!vid.firstChild) {
       requestAnimationFrame(applyCam);
-      vid.innerHTML = `<iframe src="https://www.youtube.com/embed/${VIDEO}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1" title="Directo" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
+      // empieza siempre (los navegadores solo dejan arrancar solo un vídeo silenciado) y enseguida se le da volumen
+      vid.innerHTML = `<iframe src="https://www.youtube.com/embed/${VIDEO}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}" title="Directo" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
+      const fr = vid.querySelector('iframe');
+      fr.addEventListener('load', () => { [300, 1200, 2500, 5000].forEach((t) => setTimeout(() => setSound(muted === false || muted === null), t)); });
     }
     view.querySelectorAll('.ang-sel [data-k]').forEach((b) => b.classList.toggle('on', b.dataset.k === cur.kind));
     const cols = $('angCols');
