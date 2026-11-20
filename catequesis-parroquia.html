@@ -38,6 +38,7 @@
   .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
   .btn.danger { color: var(--danger); border-color: rgba(229,128,111,.45); }
   .btn:disabled { opacity: .4; cursor: default; }
+  a.btn { color: inherit; text-decoration: none; }
 
   /* ---------- Lista ---------- */
   #lista { max-width: 1300px; margin: 0 auto; padding: 16px 16px 48px; }
@@ -216,6 +217,9 @@
     <div class="sp"></div>
     <button class="btn" id="nuevo">＋ Nueva</button>
     <button class="btn" id="duplicar">Duplicar</button>
+    <button class="btn" id="pdfBtn" title="Ficha de Lectio Divina en PDF">PDF</button>
+    <a class="btn" id="verBtn" target="_blank" rel="noopener" title="Presentación para el móvil">Ver en móvil</a>
+    <a class="btn" id="waBtn" target="_blank" rel="noopener" title="Enviar el enlace por WhatsApp">WhatsApp</a>
     <button class="btn" id="imprimir">Imprimir</button>
     <button class="btn danger" id="borrar">Borrar</button>
   </div>
@@ -281,6 +285,7 @@
   </div>
 </dialog>
 
+<script src="catequesis-pdf.js"></script>
 <script>
 (() => {
   "use strict";
@@ -533,14 +538,17 @@
   function renderFicha() {
     if (!encontrados.length) encontrados = filtrar();
     let r = actual && porId(actual);
-    if (!r) { r = encontrados[0] || db.registros[0]; actual = r ? r.id : null; }
+    if (!r) { r = encontrados[0] || db.registros[0]; if (db.registros.length) actual = r ? r.id : null; }   // con la base aún vacía se respeta la sesión pedida
     const vacia = !r;
     campos.forEach(el => { el.disabled = vacia; if (document.activeElement !== el) el.value = r ? r[el.dataset.f] || "" : ""; });
     const i = r ? encontrados.findIndex(x => x.id === r.id) : -1;
     $("pos").textContent = vacia ? "Sin sesiones" : i >= 0 ? `${i + 1} de ${encontrados.length}` + (encontrados.length < db.registros.length ? ` (filtradas de ${db.registros.length})` : "") : "Fuera del filtro";
     $("primero").disabled = $("anterior").disabled = i <= 0;
     $("siguiente").disabled = $("ultimo").disabled = i < 0 || i >= encontrados.length - 1;
-    ["duplicar", "imprimir", "borrar"].forEach(b => $(b).disabled = vacia);
+    ["duplicar", "imprimir", "borrar", "pdfBtn"].forEach(b => $(b).disabled = vacia);
+    const url = r ? new URL("catequesis-sesion.html?s=" + encodeURIComponent(r.id), location.href).href : "";
+    $("verBtn").href = url || "catequesis-sesion.html";
+    $("waBtn").href = r ? "https://wa.me/?text=" + encodeURIComponent(`${r.sesion ? r.sesion + ". " : ""}${r.titulo} (${r.nivel})\n${url}`) : "#";
     requestAnimationFrame(() => campos.forEach(crece));
     if (r) document.title = `${r.sesion ? r.sesion + ". " : ""}${r.titulo || "Sesión"} · Catequesis`;
   }
@@ -578,6 +586,12 @@
   $("nuevoL").onclick = () => nueva();
   $("duplicar").onclick = () => { const r = porId(actual); if (r) nueva(r); };
   $("imprimir").onclick = () => window.print();
+  $("pdfBtn").onclick = async () => {
+    const r = porId(actual); if (!r) return;
+    const b = $("pdfBtn"); b.disabled = true; b.textContent = "Preparando…";
+    try { await CatequesisPDF.descargar(r); } catch (e) { toast("No se pudo crear el PDF"); }
+    b.disabled = false; b.textContent = "PDF";
+  };
   $("borrar").onclick = () => {
     const r = porId(actual); if (!r) return;
     if (!confirm(`¿Borrar la sesión «${r.sesion}. ${r.titulo || "sin título"}»? No se puede deshacer.`)) return;
