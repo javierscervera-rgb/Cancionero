@@ -148,13 +148,14 @@
       const cuerpo = limpio(F.rom, r.texto || "");
       if (cuerpo.trim()) {
         const a = ajustar(F.rom, cuerpo, w, bottom - y0, 16, 6, 1.27, 0.45);
+        const poesia = /[^\n]\n[^\n]/.test(cuerpo);   // salmos: un verso por línea, sin justificar
         let y = y0 + a.size;
         a.lineas.forEach(l => {
           if (l.vacia) { y += a.size * 0.45; return; }
           // justificado salvo la última línea de cada párrafo
           const palabras = l.t.split(" ");
           const libre = w - F.rom.widthOfTextAtSize(l.t, a.size);
-          if (!l.fin && palabras.length > 1 && libre < w * 0.25) {
+          if (!poesia && !l.fin && palabras.length > 1 && libre < w * 0.25) {
             const extra = libre / (palabras.length - 1);
             let xx = x;
             palabras.forEach(pw => { p2.drawText(pw, { x: xx, y: H - y, size: a.size, font: F.rom, color: rgb(L, C.tinta) }); xx += F.rom.widthOfTextAtSize(pw + " ", a.size) + extra; });
