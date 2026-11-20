@@ -15,13 +15,19 @@
   }
   let o0 = false; try { o0 = localStorage.getItem(KEY) === '1'; } catch (e) { /* nada */ }
   setOpen(o0);
-  btn.onclick = () => setOpen(!items.classList.contains('open'));
+  btn.onclick = () => {
+    // al pulsar el botón de pantalla, se recoge el engranaje si estaba desplegado
+    const tb = $('toolbar');
+    if (tb && !tb.classList.contains('collapsed')) $('gearBtn').click();
+    setOpen(!items.classList.contains('open'));
+  };
   function update() {
     const p = A.pres();
     $('pmSize').textContent = Math.round(p.scale * 100) + '%';
     $('pmDown').disabled = p.scale <= 0.5; $('pmUp').disabled = p.scale >= 2;
     $('pmSong').setAttribute('aria-pressed', String(p.mode === 'song'));
     $('pmCita').setAttribute('aria-pressed', String(p.mode === 'cita'));
+    btn.classList.toggle('blanked', A.blank()); // se nota aunque el desplegable esté recogido
   }
   $('pmDown').onclick = () => A.setPres({ scale: A.pres().scale - 0.1 });
   $('pmUp').onclick = () => A.setPres({ scale: A.pres().scale + 0.1 });

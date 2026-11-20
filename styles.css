@@ -819,10 +819,11 @@ body.letras-ui .content { overflow: auto !important; touch-action: pan-x pan-y; 
 .pres-items.open, .toolbar.collapsed .pres-items.open { display: flex; }
 .toolbar .tb.pres-btn { color: var(--muted); }
 .toolbar .tb.pres-btn[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); }
+.toolbar .tb.pres-btn.blanked { background: #111; border-color: #c62828; color: #ff5252; }
 .tb.pm-size { cursor: default; height: 26px; border: 0; background: transparent; font-family: var(--mono); font-size: 11px; color: var(--ink); }
 .tb.pres-ctl sup { font-size: 9px; }
-body.receiving:not(.lyrics-op) .tb-blank, body.receiving:not(.lyrics-op) .tb-pres { display: none !important; }
-body.lyrics-op .tb-pres { display: none !important; }
+body.receiving:not(.lyrics-op) .tb-pres { display: none !important; }
+body.lyrics-op .pres-ctl { display: none !important; }
 
 /* Botones grandes: engranaje, ocultar letra y presentación (el doble; en el móvil, +50 %) */
 .tb-main .tb.gear, .tb-big .tb { width: 88px; height: 88px; border-radius: 22px; font-size: 26px; }
