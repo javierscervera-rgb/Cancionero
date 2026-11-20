@@ -22,7 +22,6 @@
     $('pmDown').disabled = p.scale <= 0.5; $('pmUp').disabled = p.scale >= 2;
     $('pmSong').setAttribute('aria-pressed', String(p.mode === 'song'));
     $('pmCita').setAttribute('aria-pressed', String(p.mode === 'cita'));
-    btn.classList.toggle('blanked', A.blank());
   }
   $('pmDown').onclick = () => A.setPres({ scale: A.pres().scale - 0.1 });
   $('pmUp').onclick = () => A.setPres({ scale: A.pres().scale + 0.1 });

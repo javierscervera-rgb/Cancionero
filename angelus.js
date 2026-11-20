@@ -34,7 +34,7 @@
   const view = document.createElement('div');
   view.id = 'angelusView'; view.className = 'ang-view'; view.hidden = true;
   view.innerHTML = `
-    <div class="ang-video" id="angVideo"></div>
+    <div class="ang-video"><div class="ang-move" id="angVideo"></div><div class="ang-pan" id="angPan" title="Arrastra para mover · rueda o pellizco para acercar · doble clic para volver"></div></div>
     <div class="ang-text"><div class="ang-cols" id="angCols"></div></div>
     <div class="ang-sel" role="group" aria-label="Oración">
       <button data-k="angelus">Ángelus</button><button data-k="regina">Regina Coeli</button>
@@ -43,6 +43,75 @@
   view.addEventListener('click', (e) => e.stopPropagation());
   view.addEventListener('pointerdown', (e) => e.stopPropagation());
   view.querySelectorAll('.ang-sel [data-k]').forEach((b) => { b.onclick = () => decide({ on: true, kind: b.dataset.k }); });
+
+  // ---------- Vídeo a todo el ancho, con zoom y desplazamiento dentro de su marco ----------
+  // cam: s = zoom (1 = cubre el marco), fx/fy = punto del vídeo (0–1) que queda en el centro del marco
+  const CAMKEY = 'cm:angCam';
+  let cam = { s: 1, fx: 0.5, fy: 0.5 };
+  try { cam = Object.assign(cam, JSON.parse(localStorage.getItem(CAMKEY) || '{}')); } catch (e) { /* nada */ }
+  const frame = () => $('angPan');
+  function base() {
+    const f = frame(), W = f.clientWidth, H = f.clientHeight;
+    // tamaño 16:9 que cubre el marco entero (a todo el ancho; si hace falta, a toda la altura)
+    let w = W, h = W * 9 / 16;
+    if (h < H) { h = H; w = H * 16 / 9; }
+    return { W, H, w, h };
+  }
+  function applyCam() {
+    const mv = $('angVideo'); if (!mv || !frame()) return;
+    const { W, H, w, h } = base();
+    if (!W || !H) return;
+    cam.s = Math.max(1, Math.min(5, cam.s));
+    const sw = w * cam.s, sh = h * cam.s;
+    let tx = W / 2 - cam.fx * sw, ty = H / 2 - cam.fy * sh;
+    tx = Math.min(0, Math.max(W - sw, tx)); ty = Math.min(0, Math.max(H - sh, ty));
+    cam.fx = (W / 2 - tx) / sw; cam.fy = (H / 2 - ty) / sh;
+    mv.style.width = w + 'px'; mv.style.height = h + 'px';
+    mv.style.transform = `translate(${tx}px, ${ty}px) scale(${cam.s})`;
+    try { localStorage.setItem(CAMKEY, JSON.stringify(cam)); } catch (e) { /* nada */ }
+  }
+  // zoom alrededor de un punto (px dentro del marco)
+  function zoomAt(px, py, factor) {
+    const { W, H, w, h } = base();
+    const sw = w * cam.s, sh = h * cam.s;
+    const tx = W / 2 - cam.fx * sw, ty = H / 2 - cam.fy * sh;
+    const vx = (px - tx) / sw, vy = (py - ty) / sh;           // punto del vídeo bajo el dedo
+    const s2 = Math.max(1, Math.min(5, cam.s * factor));
+    const tx2 = px - vx * w * s2, ty2 = py - vy * h * s2;
+    cam.s = s2; cam.fx = (W / 2 - tx2) / (w * s2); cam.fy = (H / 2 - ty2) / (h * s2);
+    applyCam();
+  }
+  function panBy(dx, dy) {
+    const { w, h } = base();
+    cam.fx -= dx / (w * cam.s); cam.fy -= dy / (h * cam.s);
+    applyCam();
+  }
+  (function gestures() {
+    const pan = frame();
+    const pts = new Map();
+    let last = null;
+    const rel = (e) => { const r = pan.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+    pan.addEventListener('pointerdown', (e) => { pan.setPointerCapture(e.pointerId); pts.set(e.pointerId, rel(e)); last = null; });
+    pan.addEventListener('pointermove', (e) => {
+      if (!pts.has(e.pointerId)) return;
+      const prev = pts.get(e.pointerId), p = rel(e);
+      pts.set(e.pointerId, p);
+      if (pts.size === 1) { panBy(p[0] - prev[0], p[1] - prev[1]); return; }
+      const [a, b] = [...pts.values()];
+      const d = Math.hypot(a[0] - b[0], a[1] - b[1]), c = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      if (last) { zoomAt(c[0], c[1], d / last.d); panBy(c[0] - last.c[0], c[1] - last.c[1]); }
+      last = { d, c };
+    });
+    const up = (e) => { pts.delete(e.pointerId); last = null; };
+    pan.addEventListener('pointerup', up); pan.addEventListener('pointercancel', up);
+    pan.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const [x, y] = rel(e);
+      zoomAt(x, y, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0025)));
+    }, { passive: false });
+    pan.addEventListener('dblclick', () => { cam = { s: 1, fx: 0.5, fy: 0.5 }; applyCam(); });
+    window.addEventListener('resize', () => { if (!view.hidden) applyCam(); });
+  })();
 
   function fitCol(col) {
     // el mayor tamaño de letra con el que cabe la columna
@@ -63,6 +132,7 @@
     const vid = $('angVideo');
     if (!show) { if (vid.firstChild) vid.innerHTML = ''; return; } // quita el vídeo (y su sonido)
     if (!vid.firstChild) {
+      requestAnimationFrame(applyCam);
       vid.innerHTML = `<iframe src="https://www.youtube.com/embed/${VIDEO}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1" title="Directo" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
     }
     view.querySelectorAll('.ang-sel [data-k]').forEach((b) => b.classList.toggle('on', b.dataset.k === cur.kind));
