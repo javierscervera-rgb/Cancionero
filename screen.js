@@ -86,13 +86,16 @@
   // Los párrafos ya vienen partidos según el máximo de caracteres común (lo decide el líder)
   function chunksOf(lines) { return [lines]; }
   const curChunks = () => { const i = A.para(); return i === null || i === undefined ? [] : chunksOf(A.lyricParas()[i] || []); };
+  // Solo se proyectan estrofas, nunca el título. Al cambiar de canción (sin párrafo elegido)
+  // la pantalla no cambia: sigue la última estrofa hasta que se marque una de la nueva canción.
+  let shown = '';
   function content() {
     const i = A.para();
     if (A.blank && A.blank()) return '';
-    if (!A.title()) return '';
-    if (i === null || i === undefined) return A.title();
+    if (!A.title() || i === null || i === undefined) return shown;
     const ch = curChunks();
-    return (ch[Math.min(A.sub(), ch.length - 1)] || []).join('\n');
+    shown = (ch[Math.min(A.sub(), ch.length - 1)] || []).join('\n');
+    return shown;
   }
   // avanzar o retroceder: primero por los trozos del párrafo, luego al párrafo siguiente/anterior
   function stepScreen(d) {
