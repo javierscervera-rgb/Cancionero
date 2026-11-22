@@ -125,6 +125,14 @@ function apply_(doc, r) {
       if (!s || !cs) return 'cancion';
       s.categories = cs;
       return null;
+    case 'songLists':
+      // cancioneros en los que aparece una canción (al menos uno)
+      s = find_(doc, r.code);
+      if (!s || !Array.isArray(r.lists)) return 'cancion';
+      var ids = doc.lists.map(function (l) { return l.id; }).filter(function (id) { return r.lists.indexOf(id) >= 0; });
+      if (!ids.length) return 'lista';
+      s.lists = ids;
+      return null;
     case 'addSong':
       var ns = r.song || {};
       var nl = lines_(ns.lines);
@@ -170,8 +178,11 @@ function apply_(doc, r) {
       var groups = {};
       r.codes.forEach(function (c) {
         var x = typeof c === 'string' ? find_(doc, c) : null;
-        if (!x || (r.list && x.list !== r.list)) return;
-        var g = groups[x.list] = groups[x.list] || [];
+        if (!x) return;
+        var ls_ = Array.isArray(x.lists) && x.lists.length ? x.lists : [x.list];
+        if (r.list && ls_.indexOf(r.list) < 0) return;
+        var gl = r.list || x.list;
+        var g = groups[gl] = groups[gl] || [];
         if (g.indexOf(c) < 0) g.push(c);
       });
       if (r.list) doc.selections[r.list] = (groups[r.list] || []).slice(0, 300);

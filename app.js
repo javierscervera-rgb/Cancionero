@@ -49,6 +49,19 @@
   let selLocal = store.get('selPending2', null); // cambios aún no guardados en Drive, por cancionero
   if (!selLocal || typeof selLocal !== 'object' || Array.isArray(selLocal)) selLocal = null;
   const songList = (code) => { const x = SONGS.find((s) => s.code === code); return x ? x.list : null; };
+  // Cancioneros a los que pertenece una canción: s.lists (si se ha cambiado) o solo el suyo (s.list)
+  const listsOf = (s) => (s && Array.isArray(s.lists) && s.lists.length ? s.lists : s ? [s.list] : []);
+  const inL = (s, id) => listsOf(s).includes(id);
+  const memberOf = (code, id) => inL(SONGS.find((s) => s.code === code), id);
+  // en qué cancionero se usa: el elegido si la canción está en él; si no, el suyo
+  const listFor = (s) => (inL(s, state.list) ? state.list : s.list);
+  let memb = store.get('songLists', {}); // cambios de cancioneros aún no guardados en Drive
+  if (!memb || typeof memb !== 'object' || Array.isArray(memb)) memb = {};
+  function applyMemb(s) {
+    if (s.baseLists === undefined) s.baseLists = Array.isArray(s.lists) ? s.lists.slice() : null;
+    const own = memb[s.code];
+    s.lists = own ? own.slice() : (s.baseLists ? s.baseLists.slice() : null);
+  }
   function splitByList(codes) { // reparte una lista de códigos por cancionero
     const out = {};
     (codes || []).forEach((c) => { const l = songList(c); if (l) (out[l] = out[l] || []).push(c); });
@@ -212,9 +225,9 @@
   })();
   reconcile();
   document.body.classList.add('can-edit'); // cualquiera puede editar (se guarda en Drive)
-  SONGS.forEach((s, i) => { s.index = i; load(s); applyCats(s); });
+  SONGS.forEach((s, i) => { s.index = i; load(s); applyCats(s); applyMemb(s); });
   state.list = listById(store.get('list', LISTS[0].id)).id;
-  const listSongs = (id) => SONGS.filter((s) => s.list === (id || state.list));
+  const listSongs = (id) => SONGS.filter((s) => inL(s, id || state.list));
 
   // ---------- Utilidades ----------
   const esc = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -249,7 +262,7 @@
     document.body.dataset.list = id;
     if (changed) { state.category = null; state.letter = null; }
     renderLists(); renderChips(); renderList();
-    if (changed && !keepSong && state.current && state.current.list !== id) location.hash = '';
+    if (changed && !keepSong && state.current && !inL(state.current, id)) location.hash = '';
   }
   function renderLists() {
     const box = $('lists');
@@ -307,7 +320,7 @@
   function filtered(ignoreLetter) {
     const q = fold(state.query.trim());
     return SONGS.filter((s) =>
-      s.list === state.list &&
+      inL(s, state.list) &&
       (!state.category || s.categories.includes(state.category)) &&
       (ignoreLetter || !state.letter || initialOf(s.title) === state.letter) &&
       (!q || s.searchText.includes(q) || s.code.toLowerCase().includes(q)));
@@ -391,14 +404,14 @@
   const selCodes = (list) => {
     list = list || state.list;
     const arr = (selLocal && selLocal[list]) || baseSel[list] || [];
-    return arr.filter((c, i) => arr.indexOf(c) === i && songList(c) === list);
+    return arr.filter((c, i) => arr.indexOf(c) === i && memberOf(c, list));
   };
   const selSongs = (list) => selCodes(list).map((c) => SONGS.find((s) => s.code === c));
-  const inSel = (code) => selCodes(songList(code)).includes(code);
+  const inSel = (code) => selCodes(listFor(SONGS.find((s) => s.code === code))).includes(code);
   function setSelection(codes, list) {
     list = list || state.list;
     selLocal = selLocal || {};
-    selLocal[list] = codes.filter((c, i) => typeof c === 'string' && codes.indexOf(c) === i && songList(c) === list);
+    selLocal[list] = codes.filter((c, i) => typeof c === 'string' && codes.indexOf(c) === i && memberOf(c, list));
     store.set('selPending2', selLocal);
     if (list === state.list && !selLocal[list].length && state.tab === 'sel') setTab('all');
     localChanged();
@@ -406,11 +419,57 @@
     if (state.current) { const ls = navList(state.current), li = ls.indexOf(state.current); updatePager(ls, li); }
   }
   function toggleSel(code) {
-    const list = songList(code);
+    const sx = SONGS.find((s) => s.code === code);
+    const list = sx ? listFor(sx) : null;
     if (!list) return;
     const cur = selCodes(list);
     setSelection(cur.includes(code) ? cur.filter((c) => c !== code) : cur.concat(code), list);
   }
+  // ---------- Cancioneros de una canción (📚) ----------
+  function setSongLists(s, ids) {
+    ids = LISTS.map((l) => l.id).filter((id) => ids.includes(id));
+    if (!ids.length) return false;
+    const base = s.baseLists || [s.list];
+    if (JSON.stringify(ids) === JSON.stringify(base)) delete memb[s.code]; else memb[s.code] = ids;
+    store.set('songLists', memb);
+    applyMemb(s);
+    localChanged();
+    renderList();
+    if (state.current) { const ls = navList(state.current); updatePager(ls, ls.indexOf(state.current)); }
+    return true;
+  }
+  function openListsMenu(s, anchor) {
+    let m = $('listsMenu');
+    if (!m) {
+      m = document.createElement('div');
+      m.id = 'listsMenu'; m.className = 'lists-menu'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-label', 'Cancioneros');
+      document.body.appendChild(m);
+      m.addEventListener('click', (e) => e.stopPropagation());
+      document.addEventListener('click', () => { m.hidden = true; });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') m.hidden = true; });
+    }
+    if (!m.hidden && m.dataset.code === s.code) { m.hidden = true; return; }
+    m.dataset.code = s.code;
+    const draw = () => {
+      const cur = listsOf(s);
+      m.innerHTML = '<p class="lm-head">Cancioneros de «' + esc(s.title) + '»</p>' +
+        LISTS.map((l) => `<label class="lm-row"><input type="checkbox" value="${l.id}"${cur.includes(l.id) ? ' checked' : ''}${cur.length === 1 && cur.includes(l.id) ? ' disabled' : ''}> ${esc(l.name)}</label>`).join('') +
+        '<p class="lm-note">Tiene que estar al menos en uno. Se guarda en Drive para todos.</p>';
+      m.querySelectorAll('input').forEach((inp) => {
+        inp.onchange = () => {
+          const ids = [...m.querySelectorAll('input:checked')].map((x) => x.value);
+          if (!setSongLists(s, ids)) inp.checked = true;
+          draw();
+        };
+      });
+    };
+    draw();
+    m.hidden = false;
+    const r = anchor.getBoundingClientRect();
+    m.style.top = Math.min(window.innerHeight - m.offsetHeight - 8, r.bottom + 6) + 'px';
+    m.style.left = Math.max(8, Math.min(window.innerWidth - m.offsetWidth - 8, r.left)) + 'px';
+  }
+
   function setTab(t) {
     state.tab = t === 'sel' ? 'sel' : 'all';
     store.set('tab', state.tab);
@@ -420,8 +479,8 @@
   }
   // canciones por las que se avanza con ← → en la canción abierta
   function navList(s) {
-    if (state.tab === 'sel' && inSel(s.code)) return selSongs(s.list);
-    return listSongs(s.list);
+    if (state.tab === 'sel' && inSel(s.code)) return selSongs(listFor(s));
+    return listSongs(listFor(s));
   }
   function renderSelUi() {
     const n = selCodes().length;
@@ -754,9 +813,11 @@
     renderNote(s);
     $('songTags').innerHTML = s.categories.map((c) => `<span class="tag">${esc(catLabel(c))}</span>`).join('') +
       '<button class="tag tag-btn" id="collBtn" title="Añadir o quitar esta canción de colecciones">🏷 Colecciones</button>' +
+      '<button class="tag tag-btn" id="listsBtn" title="Cancioneros en los que aparece esta canción">📚 Cancioneros</button>' +
       (s.edited ? '<span class="tag edited" title="Se está guardando en Drive; si no hay conexión, se subirá en cuanto vuelva">⏳ Guardando en Drive…</span>' : '');
     document.title = s.title + ' · Cancionero';
-    if (s.list !== state.list) setList(s.list, true);
+    if (!inL(s, state.list)) setList(listsOf(s)[0], true);
+    $('listsBtn').onclick = (e) => { e.stopPropagation(); openListsMenu(s, e.currentTarget); };
     const ls = navList(s);
     updatePager(ls, ls.indexOf(s));
     renderSheet();
@@ -804,7 +865,7 @@
     const addToSel = state.tab === 'sel';
     const s = { code, title: n.title, lines: lines.slice(), variants: [], categories: cats.slice(), list, baseCats: cats.slice() };
     ORIG[code] = { title: n.title, lines: lines.slice() };
-    SONGS.push(s); s.index = SONGS.length - 1; load(s); applyCats(s);
+    SONGS.push(s); s.index = SONGS.length - 1; load(s); applyCats(s); applyMemb(s);
     if (addToSel) setSelection(selCodes(list).concat(code), list);
     localChanged();
     renderLists(); renderList();
@@ -1199,7 +1260,7 @@
       return n;
     },
     // ---- Colecciones ----
-    collections: () => catsFor(state.current ? state.current.list : state.list).map((c) => ({ name: c, label: catLabel(c), custom: !CATS.includes(c), count: SONGS.filter((s) => s.categories.includes(c)).length })),
+    collections: () => (state.current ? listsOf(state.current) : [state.list]).flatMap((l) => catsFor(l)).filter((c, i, a) => a.indexOf(c) === i).map((c) => ({ name: c, label: catLabel(c), custom: !CATS.includes(c), count: SONGS.filter((s) => s.categories.includes(c)).length })),
     songCats: () => (state.current ? state.current.categories.slice() : []),
     setSongCats(code, list) {
       const s = SONGS.find((x) => x.code === code);
@@ -1274,6 +1335,7 @@
       out.sel = selLocal ? JSON.parse(JSON.stringify(selLocal)) : null; // { idLista: [códigos] }
       out.newSongs = Object.values(newSongs).map((x) => JSON.parse(JSON.stringify(x)));
       out.settings = store.get('settingsPending', null);
+      out.lists = Object.entries(memb).map(([code, lists]) => ({ code, lists: lists.slice() }));
       return out;
     },
     // El cancionero tal como viene de la fuente (sin cambios locales), para subirlo la primera vez
@@ -1284,6 +1346,7 @@
         selections: JSON.parse(JSON.stringify(baseSel)),
         songs: SONGS.map((s) => {
           const o = { code: s.code, title: ORIG[s.code].title, lines: ORIG[s.code].lines.slice(), variants: s.variants || [], categories: (s.baseCats || []).slice(), list: s.list };
+          if (s.baseLists) o.lists = s.baseLists.slice();
           if (s.comment) o.comment = s.comment;
           return o;
         })
@@ -1293,7 +1356,7 @@
     loadDoc(doc) {
       if (!doc || !Array.isArray(doc.songs) || !Array.isArray(doc.lists) || !doc.songs.length) return;
       const cur = state.current;
-      const sig = (s) => s && JSON.stringify([s.title, s.lines, s.categories, s.comment || '', s.list, s.edited]);
+      const sig = (s) => s && JSON.stringify([s.title, s.lines, s.categories, s.comment || '', s.list, s.lists, s.edited]);
       const before = sig(cur);
       LISTS.splice(0, LISTS.length, ...doc.lists);
       CATS = LISTS.flatMap((l) => l.cats || []);
@@ -1310,6 +1373,9 @@
         const s = byCode[d.code] || { code: d.code };
         s.variants = d.variants || [];
         s.list = d.list || LISTS[0].id;
+        s.baseLists = Array.isArray(d.lists) && d.lists.length ? d.lists.slice() : null;
+        // el cambio propio ya está en Drive: deja de estar pendiente
+        if (memb[d.code] && JSON.stringify(memb[d.code]) === JSON.stringify(s.baseLists)) delete memb[d.code];
         s.baseCats = (d.categories || []).slice();
         if (d.comment) s.comment = d.comment; else delete s.comment;
         ORIG[d.code] = { title: d.title, lines: d.lines.slice() };
@@ -1326,7 +1392,8 @@
       store.set('newSongs', newSongs);
       SONGS.splice(0, SONGS.length, ...next);
       reconcile();
-      SONGS.forEach((s, i) => { s.index = i; load(s); applyCats(s); });
+      store.set('songLists', memb);
+      SONGS.forEach((s, i) => { s.index = i; load(s); applyCats(s); applyMemb(s); });
       if (state.category && !allCats().includes(state.category)) state.category = null;
       renderLists(); renderChips(); renderList();
       if (!cur) { const h = decodeURIComponent(location.hash.replace(/^#\/?/, '')); if (h && SONGS.some((x) => x.code === h)) showSong(h); }
