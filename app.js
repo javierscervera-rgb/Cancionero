@@ -1407,13 +1407,27 @@
     updateNotationBtn(); renderSheet(); renderList();
   };
 
-  const theme = store.get('theme', null);
-  if (theme) document.documentElement.dataset.theme = theme;
+  // Temas: claro → oscuro → color (alegre, con brillos de neón) → claro…
+  const THEME_ICON = { light: '☀︎', dark: '☾', color: '✦' };
+  function applyTheme(t) {
+    document.documentElement.dataset.theme = t;
+    $('themeBtn').textContent = THEME_ICON[t] || '☾';
+    $('themeBtn').title = t === 'color' ? 'Tema: color' : t === 'dark' ? 'Tema: noche' : 'Tema: día';
+    if (t === 'color' && !document.getElementById('fontColor')) {
+      const l = document.createElement('link');
+      l.id = 'fontColor'; l.rel = 'stylesheet';
+      l.href = 'https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap';
+      document.head.appendChild(l);
+    }
+    if (window.App && window.App.refit) setTimeout(() => window.App.refit(), 300);
+  }
+  const theme = store.get('theme', null) ||
+    (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  applyTheme(theme);
   $('themeBtn').onclick = () => {
-    const cur = document.documentElement.dataset.theme ||
-      (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    const nx = cur === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = nx;
+    const cur = document.documentElement.dataset.theme || 'light';
+    const nx = cur === 'light' ? 'dark' : cur === 'dark' ? 'color' : 'light';
+    applyTheme(nx);
     store.set('theme', nx);
   };
 
