@@ -177,19 +177,8 @@
   }
 
   // ---------- Modo ----------
-  function setMode(m, salaOk) {
+  function setMode(m) {
     if (live.mode === 'receptor' && m !== 'receptor' && window.App.clearTemp) window.App.clearTemp();
-    if (!IN_CLAUDE && m !== 'off' && !live.room && salaAuto() && !salaOk) {
-      // código de sala automático: el mismo que los que se han activado en los últimos 30 minutos
-      if (resolving) return;
-      resolving = true; render();
-      resolveSala(true).then((code) => {
-        resolving = false;
-        if (code) { live.sala = code; store.set('liveSala', code); if ($('liveSala')) $('liveSala').value = code; }
-        setMode(m, true);
-      });
-      return;
-    }
     if (!IN_CLAUDE && m !== 'off' && !live.room) {
       if (!cleanRoom(live.sala)) { flash('Escribe primero un código de sala.'); $('liveSala').focus(); m = 'off'; }
       else connectP2P();
@@ -284,10 +273,10 @@
     });
     sel.disabled = ems.length < 2;
 
+    if (!IN_CLAUDE && live.room && live.connected && peersList().some((p) => !p.isMe && !p.sameTab && p.presence && p.presence.role)) rememberSala(live.sala);
     let status = '';
     const nR = receivers.length === 1 ? '1 receptor' : receivers.length + ' receptores';
-    if (!IN_CLAUDE && live.mode === 'off' && !resolving) status = 'Pulsa Líder, Letras o Recibir. Los dispositivos que se activen en los 30 minutos siguientes al primero comparten la sala automáticamente.';
-    else if (resolving) status = 'Buscando la sala…';
+    if (!IN_CLAUDE && live.mode === 'off') status = 'Elige o escribe una sala y pulsa Líder, Letras o Recibir. Todos deben usar la misma.';
     else if (!live.connected) status = 'Conectando…';
     else if (live.mode === 'off') status = ems.length ? (ems.length === 1 ? 'Hay 1 líder emitiendo.' : `Hay ${ems.length} líderes emitiendo.`) : 'Nadie está emitiendo ahora.';
     else if (live.mode === 'emisor') status = 'Eres el líder: ' + nR + (lyricists.length ? ' y ' + lyricists.length + ' en Letras' : '') + '.';
@@ -387,8 +376,9 @@
       <p class="live-taken" id="liveTaken" hidden></p>
       <div class="sala" id="liveSalaRow" hidden>
         <label class="field">Código de sala
-          <input id="liveSala" maxlength="40" placeholder="automático" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <span class="sala-in"><input id="liveSala" maxlength="40" placeholder="p. ej. misa-12" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="button" class="sala-more" id="liveSalaMore" aria-label="Últimas salas" title="Últimas salas">▾</button></span>
         </label>
+        <div class="sala-list" id="liveSalaList" hidden></div>
         <button class="link-btn" id="liveCopy" type="button">Copiar enlace para invitar</button>
       </div>
       <label class="field">Tu nombre (opcional)
@@ -451,7 +441,6 @@
     btn.onclick = () => {
       panel.hidden = !panel.hidden;
       btn.setAttribute('aria-expanded', String(!panel.hidden));
-      if (!panel.hidden && !IN_CLAUDE && live.mode === 'off' && salaAuto()) peekSala();
     };
     document.addEventListener('click', (e) => {
       if (!panel.hidden && !panel.contains(e.target) && !btn.contains(e.target)) {
@@ -471,10 +460,11 @@
       $('liveSala').onchange = (e) => {
         live.sala = cleanRoom(e.target.value); e.target.value = live.sala; store.set('liveSala', live.sala);
         // escrito a mano: se respeta; vacío: vuelve a ser automático
-        store.set('liveSalaManual', !!live.sala);
-        if (!live.sala) peekSala();
         if (live.room) { const m = live.mode; disconnectP2P(); setMode(m); }
       };
+      $('liveSalaMore').onclick = (e) => { e.preventDefault(); renderSalaList(); $('liveSalaList').hidden = !$('liveSalaList').hidden; };
+      $('liveSala').oninput = () => { $('liveSalaList').hidden = true; };
+      renderSalaList();
       $('liveCopy').onclick = () => {
         const code = cleanRoom($('liveSala').value);
         if (!code) { flash('Escribe primero un código de sala.'); return; }
@@ -557,63 +547,32 @@
     .replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
   live.sala = cleanRoom(new URLSearchParams(location.search).get('sala') || store.get('liveSala', ''));
 
-  // ---------- Código de sala automático ----------
-  // Un tema «vestíbulo» retenido en el broker guarda { code, t }: el código y cuándo se activó el primero.
-  // Si se activó hace menos de 30 minutos (o su sala sigue teniendo gente), se usa ese; si no, uno nuevo.
-  const LOBBY = 'cancionero-meriba/v1/_lobby';
-  const WINDOW = 30 * 60 * 1000;
-  const CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';
-  const URL_SALA = !!new URLSearchParams(location.search).get('sala');
-  let resolving = false, candidate = '';
-  const salaAuto = () => !URL_SALA && !store.get('liveSalaManual', false);
-  const newCode = () => Array.from({ length: 4 }, () => CHARS[Math.floor(Math.random() * CHARS.length)]).join('');
-  function resolveSala(publish) {
-    return loadMqtt().then(() => new Promise((done) => {
-      let finished = false, lobby = null, active = false, c = null;
-      const finish = () => {
-        if (finished) return; finished = true;
-        const fresh = lobby && lobby.code && Date.now() - (lobby.t || 0) < WINDOW;
-        let code;
-        if (fresh || (lobby && lobby.code && active)) code = cleanRoom(lobby.code);
-        else {
-          code = candidate || newCode();
-          if (publish && c) { try { c.publish(LOBBY, JSON.stringify({ code, t: Date.now() }), { retain: true, qos: 1 }); } catch (e) { /* nada */ } }
-        }
-        if (!publish) candidate = code;
-        setTimeout(() => { try { c && c.end(false); } catch (e) { /* nada */ } }, publish ? 800 : 0);
-        done(code);
-      };
-      try {
-        c = window.mqtt.connect(BROKERS[0], { clean: true, connectTimeout: 6000, reconnectPeriod: 0 });
-        c.on('connect', () => {
-          c.subscribe(LOBBY, { qos: 1 });
-          setTimeout(() => {
-            // ¿la sala del vestíbulo sigue teniendo a alguien conectado?
-            if (lobby && lobby.code && Date.now() - (lobby.t || 0) >= WINDOW) {
-              c.subscribe('cancionero-meriba/v1/' + cleanRoom(lobby.code) + '/pres/+', { qos: 1 });
-              setTimeout(finish, 1200);
-            } else finish();
-          }, 1200);
-        });
-        c.on('message', (topic, payload) => {
-          const txt = payload ? payload.toString() : '';
-          let d = null; try { d = txt ? JSON.parse(txt) : null; } catch (e) { return; }
-          if (topic === LOBBY) lobby = d && typeof d === 'object' ? d : null;
-          else if (d && d.role && (!d.t || Date.now() - d.t < 90000)) active = true;
-        });
-        c.on('error', () => finish());
-      } catch (e) { /* sin conexión */ }
-      setTimeout(finish, 5000);
-    })).catch(() => candidate || newCode());
+  // ---------- Últimas salas ----------
+  // Cada dispositivo recuerda las 5 últimas salas en las que ha coincidido con otros dispositivos
+  const salaHist = () => (store.get('liveSalas', []) || []).filter((x) => typeof x === 'string' && x).slice(0, 5);
+  function rememberSala(code) {
+    code = cleanRoom(code);
+    if (!code) return;
+    const h = salaHist();
+    if (h[0] === code) return;
+    store.set('liveSalas', [code].concat(h.filter((x) => x !== code)).slice(0, 5));
+    renderSalaList();
   }
-  // al abrir el panel se enseña el código que se va a usar (sin activarse todavía)
-  function peekSala() {
-    if (resolving) return;
-    resolveSala(false).then((code) => {
-      if (!salaAuto() || live.mode !== 'off' || resolving) return;
-      live.sala = code; if ($('liveSala')) $('liveSala').value = code;
+  function renderSalaList() {
+    const box = $('liveSalaList'); if (!box) return;
+    const h = salaHist();
+    $('liveSalaMore').hidden = !h.length;
+    box.innerHTML = '';
+    h.forEach((code) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = code; b.className = code === cleanRoom(live.sala) ? 'on' : '';
+      b.onclick = () => { $('liveSala').value = code; box.hidden = true; $('liveSala').onchange({ target: $('liveSala') }); };
+      box.appendChild(b);
     });
   }
+  const newCode = () => Array.from({ length: 4 }, () => 'abcdefghjkmnpqrstuvwxyz23456789'[Math.floor(Math.random() * 31)]).join('');
+  if (!IN_CLAUDE && !live.sala) { live.sala = salaHist()[0] || newCode(); store.set('liveSala', live.sala); }
+
   // ---------- Nombre del dispositivo por defecto ----------
   function deviceName() {
     const ua = navigator.userAgent || '';
