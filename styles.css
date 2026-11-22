@@ -1010,3 +1010,25 @@ body.lyrics-op .pres-ctl { display: none !important; }
   [data-theme="color"] .brand::before { width: 26px; height: 26px; font-size: 14px; border-radius: 8px; }
   [data-theme="color"] .chipbar .chip { font-size: 13.5px; padding: 6px 15px; }
 }
+
+/* Controles de dentro del engranaje: mismo tamaño que los demás (el doble; en el móvil, +50 %) */
+.tb-main .tb { width: 88px; height: 88px; border-radius: 22px; font-size: 38px; }
+.tb-main .tb.small { font-size: 19px; line-height: 1.1; }
+.tb-main .tb sup { font-size: 20px; }
+.tb-main .tb.key { height: 100px; }
+.tb-main .key-name { font-size: 24px; }
+.tb-main .key-off { font-size: 17px; min-height: 18px; margin-top: 4px; }
+.tb-main .tb-sep { width: 48px; }
+.tb-main { padding: 8px; gap: 10px; border-radius: 26px; }
+@media (max-width: 820px) {
+  .tb-main .tb { width: 60px; height: 60px; border-radius: 16px; font-size: 27px; }
+  .tb-main .tb.small { font-size: 14px; }
+  .tb-main .tb sup { font-size: 14px; }
+  .tb-main .tb.key { height: 70px; }
+  .tb-main .key-name { font-size: 18px; }
+  .tb-main .key-off { font-size: 13px; min-height: 14px; }
+  .tb-main .tb-sep { width: 34px; }
+  .tb-main { padding: 5px; gap: 6px; border-radius: 18px; }
+}
+[data-theme="color"] .tb-main .tb { border-radius: 50%; }
+[data-theme="color"] .tb-main .tb.key { border-radius: 26px; }
