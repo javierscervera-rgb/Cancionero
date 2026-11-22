@@ -138,9 +138,11 @@ button, select, input { font: inherit; color: inherit; }
 
 /* En directo */
 .live-btn { display: inline-flex; align-items: center; gap: 7px; }
-.live-btn .dot, .live-bar .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: 0 0 auto; }
+.live-btn .dot, .live-bar .dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; box-sizing: border-box; }
+/* siempre parpadea: círculo rojo vacío si está desactivado, relleno si está activo */
+.live-btn .dot { background: transparent; border: 2px solid #d93a2b; animation: pulse 1.6s ease-in-out infinite; }
 .live-btn.on { border-color: var(--accent); color: var(--accent); }
-.live-btn.on .dot, .live-bar .dot { background: #d93a2b; animation: pulse 1.6s ease-in-out infinite; }
+.live-btn.on .dot, .live-bar .dot { background: #d93a2b; border: 0; animation: pulse 1.6s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .35; } }
 .live-panel {
   position: fixed; top: 62px; right: 12px; z-index: 30; width: min(340px, calc(100vw - 24px));
@@ -167,8 +169,7 @@ button, select, input { font: inherit; color: inherit; }
 .live-bar button { border: 0; border-radius: 999px; background: var(--accent); color: #fff; padding: 6px 12px; cursor: pointer; font-size: 13px; }
 body.live-on .content { padding-bottom: 110px; }
 @media (max-width: 820px) {
-  .live-btn .lbl { display: none; }
-  .live-btn { padding: 0; width: 34px; justify-content: center; }
+  .live-btn { padding: 0 9px; gap: 5px; font-size: 12px; }
   .top { gap: 8px; padding: 0 10px; }
   .top .pill#notationBtn, .top .pill#angelusBtn { padding: 0 10px; font-size: 12px; }
 }
