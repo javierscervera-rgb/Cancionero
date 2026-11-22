@@ -10,20 +10,50 @@
   const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
   const TXT = {
-    angelus: `<p class="ttl">Angelus</p>
-<p><b>V.</b> Angelus Domini nuntiavit Mariæ. <b>R.</b> Et concepit de Spiritu Sancto. <i>Ave Maria…</i></p>
-<p><b>V.</b> Ecce ancilla Domini. <b>R.</b> Fiat mihi secundum verbum tuum. <i>Ave Maria…</i></p>
-<p><b>V.</b> Et Verbum caro factum est. <b>R.</b> Et habitavit in nobis. <i>Ave Maria…</i></p>
-<p><b>V.</b> Ora pro nobis, sancta Dei Genetrix. <b>R.</b> Ut digni efficiamur promissionibus Christi.</p>
-<p><b>Oremus.</b> Gratiam tuam, quæsumus, Domine, mentibus nostris infunde; ut qui, Angelo nuntiante, Christi Filii tui incarnationem cognovimus, per passionem eius et crucem ad resurrectionis gloriam perducamur. Per eundem Christum Dominum nostrum. <b>Amen.</b></p>`,
-    ave: `<p class="ttl">Ave Maria</p>
-<p>Ave Maria, gratia plena, Dominus tecum. Benedicta tu in mulieribus, et benedictus fructus ventris tui, Iesus.<br>Sancta Maria, Mater Dei, ora pro nobis peccatoribus, nunc et in hora mortis nostræ. <b>Amen.</b></p>
-<p class="ttl">Gloria Patri</p>
-<p>Gloria Patri, et Filio, et Spiritui Sancto.<br>Sicut erat in principio, et nunc et semper, et in sæcula sæculorum. <b>Amen.</b></p>`,
-    regina: `<p class="ttl">Regina Cæli</p>
-<p>Regina cæli, lætare, alleluia.<br>Quia quem meruisti portare, alleluia.<br>Resurrexit, sicut dixit, alleluia.<br>Ora pro nobis Deum, alleluia.</p>
-<p><b>V.</b> Gaude et lætare, Virgo Maria, alleluia.<br><b>R.</b> Quia surrexit Dominus vere, alleluia.</p>
-<p><b>Oremus.</b> Deus, qui per resurrectionem Filii tui, Domini nostri Iesu Christi, mundum lætificare dignatus es: præsta, quæsumus, ut per eius Genetricem Virginem Mariam, perpetuæ capiamus gaudia vitæ. Per eundem Christum Dominum nostrum. <b>Amen.</b></p>`
+    angelus: `<p class="ttl">ÁNGELUS:</p>
+<p><span class="v">V/.</span> Ángelus Dómini nuntiávit Maríae.</p>
+<p class="r"><span class="v">R/.</span> Et concépit de Spíritu Sancto.</p>
+<p class="av">Ave Maria.</p>
+<p><span class="v">V/.</span> Ecce ancílla Dómini.</p>
+<p class="r"><span class="v">R/.</span> Fiat mihi secúndum verbum tuum.</p>
+<p class="av">Ave Maria.</p>
+<p><span class="v">V/.</span> Et Verbum caro factum est.</p>
+<p class="r"><span class="v">R/.</span> Et habitavit in nobis.</p>
+<p class="av">Ave Maria.</p>
+<p><span class="v">V/.</span> Ora pro nobis, sancta Dei Génitrix.</p>
+<p class="r"><span class="v">R/.</span> Ut digni efficiámur promissiónibus Christi.</p>
+<p class="or">Orémus:<br>Grátiam tuam, quaésumus, Dómine, méntibus nostris infúnde: ut qui, Ángelo nuntiánte, Christi Fílii tui Incarnatiónem cognóvimus, per Passiónem ejus et Crucem ad resurrectiónis glóriam perducámur. Per eúmdem Christum Dóminum nostrum.</p>
+<p class="r"><span class="v">R/.</span> Amen.</p>`,
+    regina: `<p class="ttl">REINA DEL CIELO:</p>
+<p><span class="v">V/.</span> Regina caeli, laetare, alleluia.</p>
+<p class="r"><span class="v">R/.</span> Quia quem meruisti portare, alleluia.</p>
+<p><span class="v">V/.</span> Resurrexit, sicut dixit, alleluia.</p>
+<p class="r"><span class="v">R/.</span> Ora pro nobis Deum, alleluia.</p>
+<p><span class="v">V/.</span> Gaude et laetare Virgo María, alleluia.</p>
+<p class="r"><span class="v">R/.</span> Quia surrexit Dominus vere, alleluia.</p>
+<p>Oremus:</p>
+<p class="or">Deus, qui per resurrectionem Filii tui, Domini nostri Iesu Christi, mundum laetificare dignatus es: praesta, quaesumus; ut, per eius Genetricem Virginem Mariam, perpetuae capiamus gaudia vitae. Per eundem Christum Dominum nostrum. Amen.</p>`,
+    right: `<p>Ave Maria, gratia plena, Dominus tecum,<br>benedicta tu in mulieribus,<br>et benedictus fructus ventris tui, Jesus.<br><b>Sancta Maria mater Dei,<br>ora pro nobis peccatoribus,<br>nunc et in hora mortis nostrae. Amen.</b></p>
+<p class="gap"></p>
+<p><span class="v">V/.</span> Gloria Patri, et Filio, et Spiritui Sancto.</p>
+<p class="r"><span class="v">R/.</span> Sicut erat in principio, et nunc, et semper, et in sæcula sæculorum. Amen.</p>
+<p class="gap"></p>
+<p class="ttl">POR LOS FIELES DIFUNTOS:</p>
+<p><span class="v">V/.</span> Pro fidelibus defunctis.</p>
+<p>Réquiem ætérnam dona eis, Dómine.</p>
+<p class="r"><span class="v">R/.</span> Et lux perpétua lúceat eis.</p>
+<p><span class="v">V/.</span> Requiéscant in pace.</p>
+<p class="r"><span class="v">R/.</span> Amen.</p>
+<p class="gap"></p>
+<p class="ttl">BENDICIÓN PAPAL:</p>
+<p><span class="v">V/.</span> Dominus vobiscum.</p>
+<p class="r"><span class="v">R/.</span> Et cum spiritu tuo.</p>
+<p><span class="v">V/.</span> Sit nomen Domini benedictum.</p>
+<p class="r"><span class="v">R/.</span> Ex hoc nunc et usque in sæculum.</p>
+<p><span class="v">V/.</span> Adiutorium nostrum in nomine Domini.</p>
+<p class="r"><span class="v">R/.</span> Qui fecit cælum et terram.</p>
+<p><span class="v">V/.</span> Benedicat vos omnipotens Deus, Pater, et Filius, et Spiritus Sanctus.</p>
+<p class="r"><span class="v">R/.</span> Amen.</p>`
   };
 
   // estado: { on, kind: 'angelus' | 'regina', t }
@@ -35,7 +65,11 @@
   view.id = 'angelusView'; view.className = 'ang-view'; view.hidden = true;
   view.innerHTML = `
     <div class="ang-video"><div class="ang-move" id="angVideo"></div><div class="ang-pan" id="angPan" title="Arrastra para mover · rueda o pellizco para acercar · doble clic para volver"></div><button class="ang-snd" id="angSnd" aria-label="Sonido del vídeo" title="Sonido del vídeo">🔊</button></div>
-    <div class="ang-text"><div class="ang-cols" id="angCols"></div></div>
+    <div class="ang-text" id="angText">
+      <div class="ang-cols" id="angCols"><div class="ang-col" id="angLeft"></div><div class="ang-col" id="angRight"></div></div>
+      <div class="ang-fs"><button id="angFsDown" aria-label="Letra más pequeña">A−</button><button id="angFsUp" aria-label="Letra más grande">A+</button></div>
+      <div class="ang-mline" data-side="l" title="Arrastra para cambiar el margen"></div><div class="ang-mline" data-side="r" title="Arrastra para cambiar el margen"></div>
+    </div>
     <div class="ang-sel" role="group" aria-label="Oración">
       <button data-k="angelus">Ángelus</button><button data-k="regina">Regina Coeli</button>
     </div>`;
@@ -131,18 +165,40 @@
   // si el navegador no dejó poner el sonido solo, el primer toque sobre el vídeo lo activa
   frame().addEventListener('pointerdown', () => { if (muted !== true) setSound(true); });
 
-  function fitCol(col) {
-    // el mayor tamaño de letra con el que cabe la columna
-    let lo = 8, hi = 64;
-    col.style.fontSize = hi + 'px';
-    if (col.scrollHeight <= col.clientHeight && col.scrollWidth <= col.clientWidth) return;
-    for (let k = 0; k < 14; k++) {
-      const mid = (lo + hi) / 2;
-      col.style.fontSize = mid + 'px';
-      if (col.scrollHeight <= col.clientHeight && col.scrollWidth <= col.clientWidth) lo = mid; else hi = mid;
-    }
-    col.style.fontSize = lo + 'px';
+  // ---------- Texto: tamaño de letra y márgenes (se guardan en el dispositivo) ----------
+  const TKEY = 'cm:angTxt';
+  let tx = { fs: 2.6, ml: 4, mr: 4 };   // fs en vh; márgenes en % del ancho
+  try { tx = Object.assign(tx, JSON.parse(localStorage.getItem(TKEY) || '{}')); } catch (e) { /* nada */ }
+  const saveTxt = () => { try { localStorage.setItem(TKEY, JSON.stringify(tx)); } catch (e) { /* nada */ } };
+  function applyTxt() {
+    tx.fs = Math.max(1.2, Math.min(8, Math.round(tx.fs * 10) / 10));
+    tx.ml = Math.max(0, Math.min(30, tx.ml)); tx.mr = Math.max(0, Math.min(30, tx.mr));
+    const t = $('angText');
+    t.style.fontSize = tx.fs + 'vh';
+    $('angCols').style.left = tx.ml + '%'; $('angCols').style.right = tx.mr + '%';
+    t.querySelector('[data-side="l"]').style.left = tx.ml + '%';
+    t.querySelector('[data-side="r"]').style.right = tx.mr + '%';
   }
+  $('angFsDown').onclick = (e) => { e.stopPropagation(); tx.fs -= 0.2; applyTxt(); saveTxt(); };
+  $('angFsUp').onclick = (e) => { e.stopPropagation(); tx.fs += 0.2; applyTxt(); saveTxt(); };
+  // las líneas de margen solo se ven al hacer scroll (y mientras se arrastran)
+  let lineTimer = null;
+  const showLines = () => { $('angText').classList.add('lines'); clearTimeout(lineTimer); lineTimer = setTimeout(() => { if (!dragSide) $('angText').classList.remove('lines'); }, 1800); };
+  ['angLeft', 'angRight'].forEach((id) => $(id).addEventListener('scroll', showLines, { passive: true }));
+  let dragSide = null;
+  $('angText').querySelectorAll('.ang-mline').forEach((ln) => {
+    ln.addEventListener('pointerdown', (e) => { e.stopPropagation(); dragSide = ln.dataset.side; ln.setPointerCapture(e.pointerId); showLines(); });
+    ln.addEventListener('pointermove', (e) => {
+      if (dragSide !== ln.dataset.side) return;
+      const r = $('angText').getBoundingClientRect();
+      const pct = (dragSide === 'l' ? (e.clientX - r.left) : (r.right - e.clientX)) / r.width * 100;
+      tx[dragSide === 'l' ? 'ml' : 'mr'] = Math.round(pct * 10) / 10;
+      applyTxt();
+    });
+    const end = () => { if (!dragSide) return; dragSide = null; saveTxt(); showLines(); };
+    ln.addEventListener('pointerup', end); ln.addEventListener('pointercancel', end);
+  });
+
   function draw() {
     const show = cur.on && window.ScreenMode.isOn();
     view.hidden = !show;
@@ -157,12 +213,11 @@
       fr.addEventListener('load', () => { [300, 1200, 2500, 5000].forEach((t) => setTimeout(() => setSound(muted === false || muted === null), t)); });
     }
     view.querySelectorAll('.ang-sel [data-k]').forEach((b) => b.classList.toggle('on', b.dataset.k === cur.kind));
-    const cols = $('angCols');
-    cols.className = 'ang-cols ' + (cur.kind === 'regina' ? 'one' : 'two');
-    cols.innerHTML = cur.kind === 'regina'
-      ? `<div class="ang-col">${TXT.regina}</div>`
-      : `<div class="ang-col">${TXT.angelus}</div><div class="ang-col">${TXT.ave}</div>`;
-    requestAnimationFrame(() => cols.querySelectorAll('.ang-col').forEach(fitCol));
+    // izquierda: Ángelus o Regina Coeli; derecha: Ave María, Gloria, difuntos y bendición
+    const left = cur.kind === 'regina' ? TXT.regina : TXT.angelus;
+    if ($('angLeft').dataset.k !== cur.kind) { $('angLeft').innerHTML = left; $('angLeft').dataset.k = cur.kind; $('angLeft').scrollTop = 0; }
+    if (!$('angRight').firstChild) $('angRight').innerHTML = TXT.right;
+    applyTxt();
   }
   // el estado más reciente entre este dispositivo y los del directo
   function sync() {
