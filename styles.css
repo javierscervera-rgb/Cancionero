@@ -1040,3 +1040,13 @@ body.lyrics-op .pres-ctl { display: none !important; }
 .lists-menu .lm-row { display: flex; align-items: center; gap: 8px; padding: 7px 2px; font-size: 14.5px; cursor: pointer; }
 .lists-menu .lm-row input { width: 18px; height: 18px; accent-color: var(--accent); }
 .lists-menu .lm-note { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+
+/* Estrofa entre ~ … ~: se proyecta en modo Cita */
+.sheet .para.cita { font-style: italic; box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
+
+/* Ver en directo: quién está conectado */
+.live-people { display: grid; gap: 4px; margin: 4px 0 6px; padding: 8px 10px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); font-size: 13px; }
+.live-people .lp { display: flex; align-items: center; gap: 7px; }
+.live-people i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: 0 0 auto; }
+.live-people i.lp-emisor { background: #d93a2b; } .live-people i.lp-letras { background: #9b5cf6; } .live-people i.lp-receptor { background: #19a3c6; }
+.pres-items.no-fs .tb { opacity: .35; cursor: not-allowed; }

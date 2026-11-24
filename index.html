@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Cancionero</title>
 <meta name="description" content="Cancioneros con acordes, transposición de tono, modo pantalla y directo">
-<link rel="stylesheet" href="styles.css?v=202611221011">
+<link rel="stylesheet" href="styles.css?v=202611240907">
 </head>
 <body>
 <header class="top">
@@ -32,6 +32,10 @@
     <div class="lists-head"><span>Listas de reproducción</span><button class="link-btn editors-btn" id="cloudOpen" hidden title="Acceso de editores: guardar cambios en el cancionero compartido">🔒 Editores</button></div>
     <div class="lists" id="lists" role="group" aria-label="Listas de reproducción"></div>
     <div class="list-head" id="listHead">
+    <div class="sel-tabs" id="selTabs">
+      <button class="sel-tab" data-tab="sel" id="tabSel">Selección</button>
+      <button class="sel-tab" data-tab="all" id="tabAll">Todas</button>
+    </div>
     <div class="search-wrap">
       <input type="search" id="search" placeholder="Buscar…" title="Buscar por título o por letra de la canción" aria-label="Buscar canción o letra" autocomplete="off">
       <div class="list-tools" role="group" aria-label="Índice">
@@ -39,10 +43,6 @@
         <button class="lt-btn" id="listFontUp" title="Letra del índice más grande" aria-label="Letra del índice más grande">A<sup>+</sup></button>
         <button class="lt-btn abc" id="abcBtn" aria-expanded="false" aria-controls="abcGrid" title="Buscar por la letra con que empieza el título">ABC</button>
       </div>
-    </div>
-    <div class="sel-tabs" id="selTabs" hidden>
-      <button class="sel-tab" data-tab="sel" id="tabSel">Selección</button>
-      <button class="sel-tab" data-tab="all" id="tabAll">Todas</button>
     </div>
     <div class="sel-bar" id="selBar" hidden>
       <span class="muted" id="selHint">Desliza una canción a la derecha para quitarla.</span>
@@ -121,19 +121,19 @@
 </div>
 </nav>
 
-<script src="songs.js?v=202611221011"></script>
-<script src="songs-parroquia.js?v=202611221011"></script>
-<script src="songs-adoracion.js?v=202611221011"></script>
-<script src="cloudboot.js?v=202611221011"></script>
-<script src="chords.js?v=202611221011"></script>
-<script src="app.js?v=202611221011"></script>
-<script src="live.js?v=202611221011"></script>
-<script src="screen.js?v=202611221011"></script>
-<script src="pres.js?v=202611221011"></script>
-<script src="chordeditor.js?v=202611221011"></script>
-<script src="editor.js?v=202611221011"></script>
-<script src="collections.js?v=202611221011"></script>
-<script src="cloud.js?v=202611221011"></script>
-<script src="angelus.js?v=202611221011"></script>
+<script src="songs.js?v=202611240907"></script>
+<script src="songs-parroquia.js?v=202611240907"></script>
+<script src="songs-adoracion.js?v=202611240907"></script>
+<script src="cloudboot.js?v=202611240907"></script>
+<script src="chords.js?v=202611240907"></script>
+<script src="app.js?v=202611240907"></script>
+<script src="live.js?v=202611240907"></script>
+<script src="screen.js?v=202611240907"></script>
+<script src="pres.js?v=202611240907"></script>
+<script src="chordeditor.js?v=202611240907"></script>
+<script src="editor.js?v=202611240907"></script>
+<script src="collections.js?v=202611240907"></script>
+<script src="cloud.js?v=202611240907"></script>
+<script src="angelus.js?v=202611240907"></script>
 </body>
 </html>

@@ -88,13 +88,14 @@
   const curChunks = () => { const i = A.para(); return i === null || i === undefined ? [] : chunksOf(A.lyricParas()[i] || []); };
   // Solo se proyectan estrofas, nunca el título. Al cambiar de canción (sin párrafo elegido)
   // la pantalla no cambia: sigue la última estrofa hasta que se marque una de la nueva canción.
-  let shown = '';
+  let shown = '', shownCita = false;
   function content() {
     const i = A.para();
     if (A.blank && A.blank()) return '';
     if (!A.title() || i === null || i === undefined) return shown;
     const ch = curChunks();
     shown = (ch[Math.min(A.sub(), ch.length - 1)] || []).join('\n');
+    shownCita = !!(A.paraCita && A.paraCita());
     return shown;
   }
   // avanzar o retroceder: primero por los trozos del párrafo, luego al párrafo siguiente/anterior
@@ -106,11 +107,13 @@
     if (d < 0) { const m = curChunks().length; if (m > 1) A.setSub(m - 1); }
   }
 
+  // modo Cita: el elegido por el líder, o automático si la estrofa está entre ~ … ~
+  const citaNow = () => !!((A.pres && A.pres().mode === 'cita') || shownCita);
   function fit() {
     if (!on) return;
     const stage = $('scrStage'), txt = $('scrText');
     const p = A.pres ? A.pres() : { scale: 1, mode: 'song' };
-    const max = cfg.size * p.scale * (p.mode === 'cita' ? 0.42 : 1) * window.innerHeight / 100;
+    const max = cfg.size * p.scale * (citaNow() ? 0.42 : 1) * window.innerHeight / 100;
     txt.style.fontSize = max + 'px';
     const fits = () => txt.scrollHeight + (txt.offsetHeight - txt.clientHeight) <= stage.clientHeight + 1 && txt.scrollWidth + (txt.offsetWidth - txt.clientWidth) <= stage.clientWidth + 1;
     if (fits()) return;
@@ -130,10 +133,10 @@
     stage.style.top = cfg.t + 'vh'; stage.style.bottom = cfg.b + 'vh';
     stage.style.left = cfg.l + 'vw'; stage.style.right = cfg.r + 'vw';
     const txt = $('scrText');
-    el.classList.toggle('cita', !!(A.pres && A.pres().mode === 'cita'));
     txt.style.fontFamily = FONTS[cfg.font].css;
     txt.style.fontWeight = cfg.bold ? '700' : '400';
     const c = content();
+    el.classList.toggle('cita', citaNow());
     if (txt.textContent !== c) {
       txt.classList.remove('show'); void txt.offsetWidth;
       txt.textContent = c;

@@ -244,6 +244,7 @@
   // Al tocar una pastilla: filtra el índice; en móvil, si estás leyendo una canción, vuelve al índice
   function pickCategory(c) {
     state.category = c;
+    if (state.tab === 'sel') { state.tab = 'all'; state.sorting = false; store.set('tab', 'all'); }
     state.letter = null;
     renderChips();
     renderList();
@@ -484,8 +485,7 @@
   }
   function renderSelUi() {
     const n = selCodes().length;
-    if (!n && state.tab === 'sel') state.tab = 'all';
-    $('selTabs').hidden = !n;
+    $('selTabs').hidden = false; // siempre visibles
     $('tabSel').textContent = 'Selección (' + n + ')';
     $('tabSel').classList.toggle('on', state.tab === 'sel');
     $('tabAll').classList.toggle('on', state.tab !== 'sel');
@@ -517,7 +517,7 @@
       `<span class="code">${s.code}</span><span class="t">${esc(s.title)}</span>` +
       `<span class="k">${keyName(s, state.shifts[s.code] || 0)}</span>` +
       (sel && state.sorting ? '<span class="drag-h" aria-label="Arrastrar para ordenar">≡</span>' : '') + '</a></li>').join('') ||
-      `<li class="empty">${sel ? 'No hay canciones seleccionadas que coincidan.'
+      `<li class="empty">${sel ? (selCodes().length ? 'No hay canciones seleccionadas que coincidan.' : 'La selección está vacía. Desliza una canción a la derecha para añadirla.')
         : state.letter ? 'No hay canciones que empiecen por esa letra aquí.'
         : state.category && !state.query ? 'Esta colección está vacía. Abre una canción y pulsa «🏷 Colecciones» para añadirla.'
         : 'No hay canciones que coincidan.'}</li>`) + addPill;
@@ -529,13 +529,15 @@
   const isLabelLine = (line) => line.trim().length < 40 &&
     /^\s*(\(.*\)|(CORO|VERSO|PUENTE|INTRO|ESTRIBILLO|CEJILLA)\b.*)\s*$/i.test(line);
 
+  // Un párrafo con texto entre ~ … ~ se proyecta en modo Cita (los ~ no se ven)
+  const paraCita = (s, i) => !!(s && s.paras[i] && s.paras[i].some((k) => !s.chordFlags[k] && s.lines[k].includes('~')));
   // Solo la letra de cada párrafo (para el modo Pantalla)
   function lyricParas(s) {
     s = s || state.current;
     if (!s) return [];
     return s.paras.map((idxs) => idxs
       .filter((i) => !s.chordFlags[i] && !isLabelLine(s.lines[i]))
-      .map((i) => s.lines[i].replace(/\s+/g, ' ').trim())
+      .map((i) => s.lines[i].replace(/~/g, '').replace(/\s+/g, ' ').trim())
       .filter(Boolean));
   }
 
@@ -558,14 +560,14 @@
           // acordes encima de una línea de letra: van pegados a su sílaba (así pueden saltar de línea juntos)
           const nx = idxs[k + 1];
           if (nx !== undefined && !s.chordFlags[nx] && s.lines[nx].trim() && !isLabelLine(s.lines[nx])) {
-            out.push(pairHtml(groups, s.lines[nx]));
+            out.push(pairHtml(groups, s.lines[nx].replace(/~/g, ' ')));
             out.skip = nx;
             return;
           }
           out.push('<span class="cl">' + groups.map((g) => g.chord ? `<b class="ch">${esc(g.text)}</b>` : esc(g.text)).join('') + '</span>');
         } else {
           if (out.skip === i) return;
-          out.push(isLabelLine(line) ? `<span class="lbl">${esc(line)}</span>` : esc(line));
+          out.push(isLabelLine(line) ? `<span class="lbl">${esc(line)}</span>` : esc(line.replace(/~/g, '')));
         }
       });
       if (!out.length) out.push('<span class="lbl">♪</span>');
@@ -574,7 +576,7 @@
     state.paraCount = paras.length;
     if (state.para !== null && state.para >= paras.length) state.para = null;
     $('sheet').innerHTML = paras.map((p, i) =>
-      `<div class="para${i === state.para ? ' sel' : ''}" data-i="${i}" tabindex="0">${p.join('\n')}</div>`).join('');
+      `<div class="para${i === state.para ? ' sel' : ''}${paraCita(s, i) ? ' cita' : ''}" data-i="${i}" tabindex="0">${p.join('\n')}</div>`).join('');
     $('sheet').style.fontSize = state.font + 'px';
     fitSheet();
     if (state.para !== null) requestAnimationFrame(() => centerPara(state.para, false));
@@ -1148,6 +1150,7 @@
     refit: fitSheet,
     // Para el modo Pantalla (screen.js)
     lyricParas: () => lyricParas(),
+    paraCita: (i) => paraCita(state.current, i === undefined ? state.para : i),
     title: () => (state.current ? state.current.title : ''),
     para: () => state.para,
     paraCount: () => state.paraCount,

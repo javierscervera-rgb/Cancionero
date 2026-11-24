@@ -178,6 +178,7 @@
 
   // ---------- Modo ----------
   function setMode(m) {
+    if (m !== 'off') live.watching = false;
     if (live.mode === 'receptor' && m !== 'receptor' && window.App.clearTemp) window.App.clearTemp();
     if (!IN_CLAUDE && m !== 'off' && !live.room) {
       if (!cleanRoom(live.sala)) { flash('Escribe primero un código de sala.'); $('liveSala').focus(); m = 'off'; }
@@ -192,7 +193,7 @@
     if (!live.room) { render(); return; }
     if (m === 'off') {
       live.following = null;
-      if (!IN_CLAUDE) { disconnectP2P(); render(); return; }
+      if (!IN_CLAUDE) { disconnectP2P(); if (!$('livePanel').hidden) watch(); render(); return; }
       live.room.presence({ role: null, follow: null, name: null }).catch(() => {});
     } else if (m === 'emisor') {
       live.following = null;
@@ -223,6 +224,20 @@
   function peersList() { try { return live.room ? live.room.peers() : []; } catch (e) { return []; } }
   function emitters() {
     return peersList().filter((p) => !p.sameTab && p.presence && p.presence.role === 'emisor');
+  }
+  // Al abrir «Ver en directo» sin estar activo, se mira la sala (sin papel) para ver quién está conectado
+  const escH = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function watch() {
+    if (IN_CLAUDE || live.mode !== 'off' || live.room || !cleanRoom(live.sala)) { render(); return; }
+    live.watching = true;
+    connectP2P();
+    live.room.presence({ name: cleanName(live.name) }).catch(() => {});
+    render();
+  }
+  function unwatch() {
+    if (!live.watching) return;
+    live.watching = false;
+    if (live.mode === 'off' && live.room && !IN_CLAUDE) { disconnectP2P(); render(); }
   }
   function pickEmitter() { const e = emitters(); return e.length ? e[0].peer : null; }
   function peerLabel(p, i) {
@@ -276,7 +291,7 @@
     if (!IN_CLAUDE && live.room && live.connected && peersList().some((p) => !p.isMe && !p.sameTab && p.presence && p.presence.role)) rememberSala(live.sala);
     let status = '';
     const nR = receivers.length === 1 ? '1 receptor' : receivers.length + ' receptores';
-    if (!IN_CLAUDE && live.mode === 'off') status = 'Elige o escribe una sala y pulsa Líder, Letras o Recibir. Todos deben usar la misma.';
+    if (!IN_CLAUDE && live.mode === 'off' && !live.room) status = 'Elige o escribe una sala y pulsa Líder, Letras o Recibir. Todos deben usar la misma.';
     else if (!live.connected) status = 'Conectando…';
     else if (live.mode === 'off') status = ems.length ? (ems.length === 1 ? 'Hay 1 líder emitiendo.' : `Hay ${ems.length} líderes emitiendo.`) : 'Nadie está emitiendo ahora.';
     else if (live.mode === 'emisor') status = 'Eres el líder: ' + nR + (lyricists.length ? ' y ' + lyricists.length + ' en Letras' : '') + '.';
@@ -284,6 +299,13 @@
     else if (live.mode === 'letras') status = 'Letras: sigues la canción y el tono del líder y pasas los párrafos para todos.';
     else status = live.paused ? 'En pausa: estás navegando por tu cuenta.' : 'Sigues al líder.';
     $('liveStatus').textContent = status;
+    // quién está conectado a la sala ahora mismo
+    const people = peersList().filter((p) => !p.sameTab && p.presence && (p.presence.role || p.presence.name));
+    const ROLE = { emisor: 'Líder', letras: 'Letras', receptor: 'Recibir' };
+    $('livePeople').hidden = !live.room || !live.connected;
+    $('livePeople').innerHTML = '<b>' + (people.length ? 'Conectados (' + people.length + ')' : 'No hay nadie más conectado') + '</b>' +
+      people.map((p) => '<span class="lp"><i class="lp-' + (p.presence.role || 'off') + '"></i>' + escH(cleanName(p.presence.name) || 'Sin nombre') +
+        ' · ' + (ROLE[p.presence.role] || 'Desactivado') + (p.presence.fs ? ' · pantalla completa' : '') + '</span>').join('');
 
     // barra inferior: completa 10 s cada vez que cambia su texto; luego se reduce al punto
     if (followerMode()) {
@@ -397,6 +419,7 @@
         <select id="liveFollow"></select>
       </label>
       <label class="toggle" id="liveScrollRow" hidden><input type="checkbox" id="liveScroll"> Centrar el párrafo que marquen</label>
+      <div class="live-people" id="livePeople" hidden></div>
       <p class="live-status" id="liveStatus"></p>
       <p class="live-flash" id="liveFlash" hidden></p>`;
     document.body.appendChild(panel);
@@ -441,10 +464,11 @@
     btn.onclick = () => {
       panel.hidden = !panel.hidden;
       btn.setAttribute('aria-expanded', String(!panel.hidden));
+      if (!panel.hidden) watch(); else unwatch();
     };
     document.addEventListener('click', (e) => {
       if (!panel.hidden && !panel.contains(e.target) && !btn.contains(e.target)) {
-        panel.hidden = true; btn.setAttribute('aria-expanded', 'false');
+        panel.hidden = true; btn.setAttribute('aria-expanded', 'false'); unwatch();
       }
     });
     panel.querySelectorAll('[data-mode]').forEach((b) => {
@@ -461,6 +485,7 @@
         live.sala = cleanRoom(e.target.value); e.target.value = live.sala; store.set('liveSala', live.sala);
         // escrito a mano: se respeta; vacío: vuelve a ser automático
         if (live.room) { const m = live.mode; disconnectP2P(); setMode(m); }
+        watch();
       };
       $('liveSalaMore').onclick = (e) => { e.preventDefault(); renderSalaList(); $('liveSalaList').hidden = !$('liveSalaList').hidden; };
       $('liveSala').oninput = () => { $('liveSalaList').hidden = true; };

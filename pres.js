@@ -35,4 +35,23 @@
   $('pmCita').onclick = () => A.setPres({ mode: 'cita' });
   A.onView(update);
   update();
+  // Sin ningún dispositivo en pantalla completa, los botones del desplegable no se pueden pulsar
+  function fsAvailable() {
+    const here = window.ScreenMode && window.ScreenMode.isClean && window.ScreenMode.isClean();
+    const there = window.Live && window.Live.fullscreenPeers ? window.Live.fullscreenPeers() : 0;
+    return !!(here || there);
+  }
+  function gate() {
+    const ok = fsAvailable();
+    items.classList.toggle('no-fs', !ok);
+    items.title = ok ? '' : 'Ningún dispositivo tiene la pantalla completa activada';
+    items.querySelectorAll('button').forEach((b) => {
+      if (!ok) { b.disabled = true; b.dataset.gated = '1'; }
+      else if (b.dataset.gated) { delete b.dataset.gated; b.disabled = false; }
+    });
+    if (ok) update();
+  }
+  setInterval(gate, 1000);
+  document.addEventListener('screen-clean', gate);
+  gate();
 })();
