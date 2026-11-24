@@ -1104,3 +1104,20 @@ audio.scr-media { display: none; }
 .live-ask div { display: flex; justify-content: flex-end; gap: 8px; }
 .mbtn { display: inline-grid; place-items: center; }
 .lt-btn.mbtn[aria-pressed="true"], .lt-btn.mbtn[aria-pressed="true"]:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Orden de la lista y multimedia (botones junto a ABC) */
+.sortbtn { font-size: 12px; font-weight: 700; letter-spacing: .2px; white-space: nowrap; }
+.sortbtn b { color: var(--accent); }
+.lt-btn.mbtn { background: #efe7ff; border-color: #cdb8ff; color: #6b3fe0; }
+.lt-btn.mbtn:hover { border-color: #6b3fe0; color: #6b3fe0; }
+.lt-btn.mbtn[aria-pressed="true"], .lt-btn.mbtn[aria-pressed="true"]:hover { background: #6b3fe0; border-color: #6b3fe0; color: #fff; }
+[data-theme="dark"] .lt-btn.mbtn { background: #2c2347; border-color: #4b3a80; color: #b9a2ff; }
+.song-head .code#songCode { cursor: pointer; border-bottom: 1px dashed transparent; }
+.song-head .code#songCode:hover { border-bottom-color: var(--muted); }
+.mark-in { width: 9ch; font: inherit; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--accent); background: var(--bg); color: var(--ink); }
+/* buscador + 5 botones: si no caben, los botones pasan debajo a todo el ancho */
+.search-wrap { flex-wrap: wrap; }
+.search-wrap input { flex: 1 1 120px; min-width: 120px; }
+.search-wrap .list-tools { flex: 1 0 auto; justify-content: flex-end; }
+.list-tools .lt-btn { min-width: 36px; padding: 0 7px; }
+.list-tools .lt-btn { flex: 1 1 0; min-height: 42px; }

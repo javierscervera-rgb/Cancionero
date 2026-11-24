@@ -31,7 +31,8 @@
     tab: store.get('tab', 'all'), // pestaña de la lista: 'sel' (Selección) o 'all' (Todas)
     sorting: false,        // ordenando la selección
     listFont: store.get('listFont2', 19),
-    mediaMode: store.get('mediaMode', false), // la lista muestra el multimedia en vez de las canciones
+    mediaMode: store.get('mediaMode', false),
+    sort: store.get('sort', 'mark'),       // orden de la lista: 'mark' (marcador A01, B02…) o 'name' (título) // la lista muestra el multimedia en vez de las canciones
     ms: { id: null, play: false, pos: 0, at: 0, vol: 1, loop: false, t: 0 }, // reproducción del multimedia
     current: null
   };
@@ -65,6 +66,39 @@
   const isMediaCode = (c) => typeof c === 'string' && c.charAt(0) === '@';
   const findItem = (code) => (isMediaCode(code) ? (MEDIA.find((m) => m.id === code) ? mediaObj(MEDIA.find((m) => m.id === code)) : null) : SONGS.find((s) => s.code === code));
   const mediaKind = (m) => (/^video\//.test(m.type) ? 'VÍDEO' : /^audio\//.test(m.type) ? 'AUDIO' : 'IMAGEN');
+  // ---------- Marcador de cada canción (A01, B02…): editable, guardado en Drive ----------
+  // El código interno (s.code) no cambia; el marcador es lo que se ve y por lo que se ordena.
+  let marks = store.get('marks', {}); // cambios aún no guardados en Drive
+  if (!marks || typeof marks !== 'object' || Array.isArray(marks)) marks = {};
+  const markOf = (s) => (s.media ? '' : (marks[s.code] !== undefined ? marks[s.code] : s.mark) || s.code);
+  const cmpText = (a, b) => a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' });
+  function sortItems(arr) {
+    const tt = (x) => (x.title || '').replace(/^[^\p{L}\p{N}]+/u, '');
+    if (state.sort === 'name') return arr.slice().sort((a, b) => cmpText(tt(a), tt(b)) || cmpText(markOf(a), markOf(b)));
+    return arr.slice().sort((a, b) => cmpText(markOf(a), markOf(b)) || (a.index || 0) - (b.index || 0));
+  }
+  function setMark(s, v) {
+    v = String(v || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 12);
+    const target = v || s.code, base = s.mark || s.code;
+    if (target === base) delete marks[s.code]; else marks[s.code] = target === s.code ? '' : target;
+    store.set('marks', marks);
+    localChanged();
+    renderList();
+    if (state.current === s) $('songCode').textContent = markOf(s);
+  }
+  // editar el marcador tocándolo en la cabecera de la canción
+  function editMark() {
+    const s = state.current, el = $('songCode');
+    if (!s || s.media || el.querySelector('input')) return;
+    const inp = document.createElement('input');
+    inp.className = 'mark-in'; inp.maxLength = 12; inp.value = markOf(s);
+    inp.setAttribute('aria-label', 'Marcador de la canción');
+    el.textContent = ''; el.appendChild(inp); inp.focus(); inp.select();
+    let done = false;
+    const fin = (ok) => { if (done) return; done = true; if (ok) setMark(s, inp.value); el.textContent = markOf(s); };
+    inp.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') fin(true); if (e.key === 'Escape') fin(false); };
+    inp.onblur = () => fin(true);
+  }
   // Cancioneros a los que pertenece una canción: s.lists (si se ha cambiado) o solo el suyo (s.list)
   const listsOf = (s) => (s && Array.isArray(s.lists) && s.lists.length ? s.lists : s ? [s.list] : []);
   const inL = (s, id) => !!(s && (s.media || listsOf(s).includes(id)));
@@ -243,7 +277,7 @@
   document.body.classList.add('can-edit'); // cualquiera puede editar (se guarda en Drive)
   SONGS.forEach((s, i) => { s.index = i; load(s); applyCats(s); applyMemb(s); });
   state.list = listById(store.get('list', LISTS[0].id)).id;
-  const listSongs = (id) => SONGS.filter((s) => inL(s, id || state.list));
+  const listSongs = (id) => sortItems(SONGS.filter((s) => inL(s, id || state.list)));
 
   // ---------- Utilidades ----------
   const esc = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -336,11 +370,11 @@
   }
   function filtered(ignoreLetter) {
     const q = fold(state.query.trim());
-    return SONGS.filter((s) =>
+    return sortItems(SONGS.filter((s) =>
       inL(s, state.list) &&
       (!state.category || s.categories.includes(state.category)) &&
       (ignoreLetter || !state.letter || initialOf(s.title) === state.letter) &&
-      (!q || s.searchText.includes(q) || s.code.toLowerCase().includes(q)));
+      (!q || s.searchText.includes(q) || s.code.toLowerCase().includes(q) || fold(markOf(s)).includes(q))));
   }
   function setLetter(l) {
     state.letter = l && l !== state.letter ? l : null;
@@ -541,7 +575,7 @@
       (s.media
         ? `<span class="code mthumb"${s.media.thumb ? ` style="background-image:url('${s.media.thumb}')"` : ''}>${s.media.thumb ? '' : (/^audio/.test(s.media.type) ? '♫' : '▶')}</span><span class="t">${esc(s.title)}</span>` +
           `<span class="k mk">${mediaKind(s.media)}</span>` + (mm ? '<span class="mact"><button type="button" data-act="ren" title="Cambiar el nombre" aria-label="Cambiar el nombre">✎</button><button type="button" data-act="del" title="Borrar" aria-label="Borrar">🗑</button></span>' : '')
-        : `<span class="code">${s.code}</span><span class="t">${esc(s.title)}</span>` +
+        : `<span class="code">${esc(markOf(s))}</span><span class="t">${esc(s.title)}</span>` +
           `<span class="k">${keyName(s, state.shifts[s.code] || 0)}</span>`) +
       (sel && state.sorting ? '<span class="drag-h" aria-label="Arrastrar para ordenar">≡</span>' : '') + '</a></li>').join('') ||
       `<li class="empty">${mm ? (MEDIA.length ? 'No hay archivos que coincidan.' : 'Todavía no hay archivos multimedia.') : sel ? (selCodes().length ? 'No hay canciones seleccionadas que coincidan.' : 'La selección está vacía. Desliza una canción a la derecha para añadirla.')
@@ -560,6 +594,19 @@
     $('sidebar').scrollTop = 0;
   }
   $('mediaBtn').onclick = () => setMediaMode(!state.mediaMode);
+  $('songCode').onclick = editMark;
+  function renderSortBtn() {
+    const b = $('sortBtn');
+    b.innerHTML = state.sort === 'name' ? '<b>A</b>–Z' : '<b>01</b>';
+    b.title = state.sort === 'name' ? 'Ordenadas por nombre (pulsa para ordenar por marcador)' : 'Ordenadas por marcador (pulsa para ordenar por nombre)';
+  }
+  $('sortBtn').onclick = () => {
+    state.sort = state.sort === 'name' ? 'mark' : 'name';
+    store.set('sort', state.sort);
+    renderSortBtn(); renderList();
+    if (state.current) { const ls = navList(state.current); updatePager(ls, ls.indexOf(state.current)); }
+  };
+  renderSortBtn();
   $('mediaBar').onclick = () => setMediaMode(!state.mediaMode);
   // reproducción del multimedia (la deciden el líder o Letras; la sigue la pantalla completa)
   function setMState(p, fromSync) {
@@ -894,7 +941,8 @@
     $('song').hidden = false;
     document.body.classList.toggle('media-open', !!s.media);
     if (s.media) { showMediaItem(s); return; }
-    $('songCode').textContent = s.code;
+    $('songCode').textContent = markOf(s);
+    $('songCode').title = 'Pulsa para cambiar el marcador';
     $('songTitle').textContent = s.title;
     renderNote(s);
     $('songTags').innerHTML = s.categories.map((c) => `<span class="tag">${esc(catLabel(c))}</span>`).join('') +
@@ -918,6 +966,7 @@
   function showMediaItem(s) {
     const m = s.media;
     $('songCode').textContent = mediaKind(m);
+    $('songCode').title = '';
     $('songTitle').textContent = s.title;
     $('songNote').hidden = true;
     $('songTags').innerHTML = '';
@@ -1451,6 +1500,7 @@
       out.newSongs = Object.values(newSongs).map((x) => JSON.parse(JSON.stringify(x)));
       out.settings = store.get('settingsPending', null);
       out.lists = Object.entries(memb).map(([code, lists]) => ({ code, lists: lists.slice() }));
+      out.marks = Object.entries(marks).map(([code, mark]) => ({ code, mark }));
       return out;
     },
     // El cancionero tal como viene de la fuente (sin cambios locales), para subirlo la primera vez
@@ -1462,6 +1512,7 @@
         songs: SONGS.map((s) => {
           const o = { code: s.code, title: ORIG[s.code].title, lines: ORIG[s.code].lines.slice(), variants: s.variants || [], categories: (s.baseCats || []).slice(), list: s.list };
           if (s.baseLists) o.lists = s.baseLists.slice();
+          if (s.mark) o.mark = s.mark;
           if (s.comment) o.comment = s.comment;
           return o;
         })
@@ -1471,7 +1522,7 @@
     loadDoc(doc) {
       if (!doc || !Array.isArray(doc.songs) || !Array.isArray(doc.lists) || !doc.songs.length) return;
       const cur = state.current;
-      const sig = (s) => s && JSON.stringify([s.title, s.lines, s.categories, s.comment || '', s.list, s.lists, s.edited]);
+      const sig = (s) => s && JSON.stringify([s.title, s.lines, s.categories, s.comment || '', s.list, s.lists, s.mark, s.edited]);
       const before = sig(cur);
       LISTS.splice(0, LISTS.length, ...doc.lists);
       CATS = LISTS.flatMap((l) => l.cats || []);
@@ -1492,6 +1543,8 @@
         s.variants = d.variants || [];
         s.list = d.list || LISTS[0].id;
         s.baseLists = Array.isArray(d.lists) && d.lists.length ? d.lists.slice() : null;
+        if (d.mark) s.mark = d.mark; else delete s.mark;
+        if (marks[d.code] !== undefined && (marks[d.code] || d.code) === (d.mark || d.code)) delete marks[d.code];
         // el cambio propio ya está en Drive: deja de estar pendiente
         if (memb[d.code] && JSON.stringify(memb[d.code]) === JSON.stringify(s.baseLists)) delete memb[d.code];
         s.baseCats = (d.categories || []).slice();
@@ -1511,6 +1564,7 @@
       SONGS.splice(0, SONGS.length, ...next);
       reconcile();
       store.set('songLists', memb);
+      store.set('marks', marks);
       SONGS.forEach((s, i) => { s.index = i; load(s); applyCats(s); applyMemb(s); });
       if (state.category && !allCats().includes(state.category)) state.category = null;
       renderLists(); renderChips(); renderList();

@@ -177,6 +177,13 @@ function apply_(doc, r) {
       doc.media = doc.media.filter(function (m) { return m.id !== r.id; });
       if (doc.selections) Object.keys(doc.selections).forEach(function (l) { doc.selections[l] = (doc.selections[l] || []).filter(function (c) { return c !== r.id; }); });
       return null;
+    case 'mark':
+      // marcador visible de la canción (A01, B02…); vacío = el código
+      s = find_(doc, r.code);
+      if (!s || typeof r.mark !== 'string') return 'cancion';
+      var mk = r.mark.replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 12);
+      if (mk && mk !== s.code) s.mark = mk; else delete s.mark;
+      return null;
     case 'songLists':
       // cancioneros en los que aparece una canción (al menos uno)
       s = find_(doc, r.code);
