@@ -112,7 +112,7 @@
     if (d < 0) { const m = curChunks().length; if (m > 1) A.setSub(m - 1); }
   }
 
-  // modo Cita: el elegido por el líder, o automático si la estrofa está entre ~ … ~
+  // modo Cita: el elegido por el líder, o automático si la estrofa está entre corchetes [ … ]
   const citaNow = () => !!((A.pres && A.pres().mode === 'cita') || shownCita);
   function fit() {
     if (!on) return;

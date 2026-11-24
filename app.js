@@ -583,15 +583,28 @@
   const isLabelLine = (line) => line.trim().length < 40 &&
     /^\s*(\(.*\)|(CORO|VERSO|PUENTE|INTRO|ESTRIBILLO|CEJILLA)\b.*)\s*$/i.test(line);
 
-  // Un párrafo con texto entre ~ … ~ se proyecta en modo Cita (los ~ no se ven)
-  const paraCita = (s, i) => !!(s && s.paras[i] && s.paras[i].some((k) => !s.chordFlags[k] && s.lines[k].includes('~')));
+  // Una estrofa entera entre corchetes [ … ] se proyecta en modo Cita (los corchetes no se ven).
+  // Los corchetes dentro de una línea (p. ej. repeticiones «[te vengo a ofrecer]») no cuentan.
+  const citaLines = (s, i) => (s && s.paras[i] ? s.paras[i].filter((k) => !s.chordFlags[k] && s.lines[k].trim() && !isLabelLine(s.lines[k])) : []);
+  const paraCita = (s, i) => {
+    const L = citaLines(s, i);
+    return L.length > 0 && /^\s*\[/.test(s.lines[L[0]]) && /\]\s*$/.test(s.lines[L[L.length - 1]]);
+  };
+  // quita el «[» del principio y el «]» del final de una estrofa Cita
+  function citaStrip(s, i, k, text, keepWidth) {
+    if (!paraCita(s, i)) return text;
+    const L = citaLines(s, i);
+    if (k === L[0]) text = text.replace(/^(\s*)\[/, keepWidth ? '$1 ' : '$1');
+    if (k === L[L.length - 1]) text = text.replace(/\]\s*$/, '');
+    return text;
+  }
   // Solo la letra de cada párrafo (para el modo Pantalla)
   function lyricParas(s) {
     s = s || state.current;
     if (!s) return [];
-    return s.paras.map((idxs) => idxs
+    return s.paras.map((idxs, pi) => idxs
       .filter((i) => !s.chordFlags[i] && !isLabelLine(s.lines[i]))
-      .map((i) => s.lines[i].replace(/~/g, '').replace(/\s+/g, ' ').trim())
+      .map((i) => citaStrip(s, pi, i, s.lines[i]).replace(/\s+/g, ' ').trim())
       .filter(Boolean));
   }
 
@@ -614,7 +627,7 @@
     const shift = state.shifts[s.code] || 0;
     const flats = s.key ? C.prefersFlats(s.key.semi + shift, s.key.minor) : false;
     // Párrafos fijos (bloques separados por líneas en blanco), iguales con o sin acordes
-    const paras = s.paras.map((idxs) => {
+    const paras = s.paras.map((idxs, pi) => {
       const out = [];
       idxs.forEach((i, k) => {
         const line = s.lines[i];
@@ -624,14 +637,14 @@
           // acordes encima de una línea de letra: van pegados a su sílaba (así pueden saltar de línea juntos)
           const nx = idxs[k + 1];
           if (nx !== undefined && !s.chordFlags[nx] && s.lines[nx].trim() && !isLabelLine(s.lines[nx])) {
-            out.push(pairHtml(groups, s.lines[nx].replace(/~/g, ' ')));
+            out.push(pairHtml(groups, citaStrip(s, pi, nx, s.lines[nx], true)));
             out.skip = nx;
             return;
           }
           out.push('<span class="cl">' + groups.map((g) => g.chord ? `<b class="ch">${esc(g.text)}</b>` : esc(g.text)).join('') + '</span>');
         } else {
           if (out.skip === i) return;
-          out.push(isLabelLine(line) ? `<span class="lbl">${esc(line)}</span>` : esc(line.replace(/~/g, '')));
+          out.push(isLabelLine(line) ? `<span class="lbl">${esc(line)}</span>` : esc(citaStrip(s, pi, i, line)));
         }
       });
       if (!out.length) out.push('<span class="lbl">♪</span>');
