@@ -14,6 +14,7 @@
     window.CLOUD_CATS = Array.isArray(doc.customCats) ? doc.customCats : [];
     window.CLOUD_SETTINGS = doc.settings && typeof doc.settings === 'object' ? doc.settings : {};
     window.CLOUD_SEL = doc.selections && typeof doc.selections === 'object' ? doc.selections : {};
+    window.CLOUD_MEDIA = Array.isArray(doc.media) ? doc.media : [];
     window.CLOUD_SEL_OLD = Array.isArray(doc.selection) ? doc.selection : null; // formato antiguo (una sola)
   } else doc = null;
   window.CLOUD_BOOT = doc;

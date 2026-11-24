@@ -244,6 +244,10 @@
     rev,
     refresh,
     open,
+    // para el multimedia (media.js)
+    url: URL_,
+    post: (body) => post(Object.assign({ by: st.by }, body)),
+    get: (qs) => getJson(URL_ + '?' + qs),
     // el emisor tiene una versión más nueva: ponerse al día
     behind(r) { if (Number.isInteger(r) && r > rev()) refresh(); }
   };

@@ -31,6 +31,8 @@
     tab: store.get('tab', 'all'), // pestaña de la lista: 'sel' (Selección) o 'all' (Todas)
     sorting: false,        // ordenando la selección
     listFont: store.get('listFont2', 19),
+    mediaMode: store.get('mediaMode', false), // la lista muestra el multimedia en vez de las canciones
+    ms: { id: null, play: false, pos: 0, at: 0, vol: 1, loop: false, t: 0 }, // reproducción del multimedia
     current: null
   };
 
@@ -49,10 +51,24 @@
   let selLocal = store.get('selPending2', null); // cambios aún no guardados en Drive, por cancionero
   if (!selLocal || typeof selLocal !== 'object' || Array.isArray(selLocal)) selLocal = null;
   const songList = (code) => { const x = SONGS.find((s) => s.code === code); return x ? x.list : null; };
+  // ---------- Multimedia (archivos en Drive; código '@xxxx') ----------
+  // Cada archivo se trata como un «elemento» de un solo párrafo: abrirlo no cambia la pantalla;
+  // tocarlo lo proyecta. Vale para cualquier cancionero.
+  let MEDIA = Array.isArray(window.CLOUD_MEDIA) ? window.CLOUD_MEDIA : [];
+  const mediaObjs = {};
+  function mediaObj(m) {
+    const o = mediaObjs[m.id] || (mediaObjs[m.id] = { code: m.id, paras: [[0]], lines: [''], chordFlags: [false], categories: [], list: null });
+    o.media = m; o.title = m.name; o.searchText = fold(m.name || '');
+    return o;
+  }
+  const mediaItems = () => MEDIA.map(mediaObj);
+  const isMediaCode = (c) => typeof c === 'string' && c.charAt(0) === '@';
+  const findItem = (code) => (isMediaCode(code) ? (MEDIA.find((m) => m.id === code) ? mediaObj(MEDIA.find((m) => m.id === code)) : null) : SONGS.find((s) => s.code === code));
+  const mediaKind = (m) => (/^video\//.test(m.type) ? 'VÍDEO' : /^audio\//.test(m.type) ? 'AUDIO' : 'IMAGEN');
   // Cancioneros a los que pertenece una canción: s.lists (si se ha cambiado) o solo el suyo (s.list)
   const listsOf = (s) => (s && Array.isArray(s.lists) && s.lists.length ? s.lists : s ? [s.list] : []);
-  const inL = (s, id) => listsOf(s).includes(id);
-  const memberOf = (code, id) => inL(SONGS.find((s) => s.code === code), id);
+  const inL = (s, id) => !!(s && (s.media || listsOf(s).includes(id)));
+  const memberOf = (code, id) => inL(findItem(code), id);
   // en qué cancionero se usa: el elegido si la canción está en él; si no, el suyo
   const listFor = (s) => (inL(s, state.list) ? state.list : s.list);
   let memb = store.get('songLists', {}); // cambios de cancioneros aún no guardados en Drive
@@ -407,8 +423,8 @@
     const arr = (selLocal && selLocal[list]) || baseSel[list] || [];
     return arr.filter((c, i) => arr.indexOf(c) === i && memberOf(c, list));
   };
-  const selSongs = (list) => selCodes(list).map((c) => SONGS.find((s) => s.code === c));
-  const inSel = (code) => selCodes(listFor(SONGS.find((s) => s.code === code))).includes(code);
+  const selSongs = (list) => selCodes(list).map((c) => findItem(c)).filter(Boolean);
+  const inSel = (code) => { const x = findItem(code); return !!x && selCodes(listFor(x)).includes(code); };
   function setSelection(codes, list) {
     list = list || state.list;
     selLocal = selLocal || {};
@@ -420,7 +436,7 @@
     if (state.current) { const ls = navList(state.current), li = ls.indexOf(state.current); updatePager(ls, li); }
   }
   function toggleSel(code) {
-    const sx = SONGS.find((s) => s.code === code);
+    const sx = findItem(code);
     const list = sx ? listFor(sx) : null;
     if (!list) return;
     const cur = selCodes(list);
@@ -481,6 +497,7 @@
   // canciones por las que se avanza con ← → en la canción abierta
   function navList(s) {
     if (state.tab === 'sel' && inSel(s.code)) return selSongs(listFor(s));
+    if (s.media) return mediaItems();
     return listSongs(listFor(s));
   }
   function renderSelUi() {
@@ -504,26 +521,63 @@
     renderSelUi();
     const list = $('songList');
     const sel = state.tab === 'sel';
+    const mm = state.mediaMode && !sel;
+    $('sidebar').classList.toggle('media-mode', !!state.mediaMode);
+    $('mediaBtn').setAttribute('aria-pressed', String(!!state.mediaMode));
+    $('mediaBar').innerHTML = state.mediaMode ? '<span>♪ Canciones</span><b>▾</b>' : '<span>🎞 Multimedia' + (MEDIA.length ? ' (' + MEDIA.length + ')' : '') + '</span><b>▴</b>';
     let items = filtered();
+    if (mm) { const q = fold(state.query.trim()); items = mediaItems().filter((s) => !q || s.searchText.includes(q)); }
     if (sel) {
       const q = fold(state.query.trim());
       items = selSongs().filter((s) => !q || s.searchText.includes(q) || s.code.toLowerCase().includes(q));
     }
     const chosen = new Set(selCodes());
     // la pastilla para añadir va siempre al final de la lista (todas, colección, letra, búsqueda o selección)
-    const addPill = '<li class="add-song"><button id="addSongBtn" type="button"><span class="as-plus">＋</span> Añadir una canción</button></li>';
+    const addPill = mm
+      ? '<li class="add-song media-up"><button id="mediaUpBtn" type="button"><span class="as-plus">＋</span> Subir foto, vídeo o audio</button><span class="mu-hint">o arrástralos aquí</span></li>'
+      : '<li class="add-song"><button id="addSongBtn" type="button"><span class="as-plus">＋</span> Añadir una canción</button></li>';
     list.innerHTML = (items.map((s) =>
-      `<li data-code="${s.code}"><a href="#${s.code}" draggable="false" class="${state.current === s ? 'active' : ''}${chosen.has(s.code) ? ' sel' : ''}">` +
-      `<span class="code">${s.code}</span><span class="t">${esc(s.title)}</span>` +
-      `<span class="k">${keyName(s, state.shifts[s.code] || 0)}</span>` +
+      `<li data-code="${s.code}"${s.media ? ' class="mli"' : ''}><a href="#${s.code}" draggable="false" class="${state.current === s ? 'active' : ''}${chosen.has(s.code) ? ' sel' : ''}">` +
+      (s.media
+        ? `<span class="code mthumb"${s.media.thumb ? ` style="background-image:url('${s.media.thumb}')"` : ''}>${s.media.thumb ? '' : (/^audio/.test(s.media.type) ? '♫' : '▶')}</span><span class="t">${esc(s.title)}</span>` +
+          `<span class="k mk">${mediaKind(s.media)}</span>` + (mm ? '<span class="mact"><button type="button" data-act="ren" title="Cambiar el nombre" aria-label="Cambiar el nombre">✎</button><button type="button" data-act="del" title="Borrar" aria-label="Borrar">🗑</button></span>' : '')
+        : `<span class="code">${s.code}</span><span class="t">${esc(s.title)}</span>` +
+          `<span class="k">${keyName(s, state.shifts[s.code] || 0)}</span>`) +
       (sel && state.sorting ? '<span class="drag-h" aria-label="Arrastrar para ordenar">≡</span>' : '') + '</a></li>').join('') ||
-      `<li class="empty">${sel ? (selCodes().length ? 'No hay canciones seleccionadas que coincidan.' : 'La selección está vacía. Desliza una canción a la derecha para añadirla.')
+      `<li class="empty">${mm ? (MEDIA.length ? 'No hay archivos que coincidan.' : 'Todavía no hay archivos multimedia.') : sel ? (selCodes().length ? 'No hay canciones seleccionadas que coincidan.' : 'La selección está vacía. Desliza una canción a la derecha para añadirla.')
         : state.letter ? 'No hay canciones que empiecen por esa letra aquí.'
         : state.category && !state.query ? 'Esta colección está vacía. Abre una canción y pulsa «🏷 Colecciones» para añadirla.'
         : 'No hay canciones que coincidan.'}</li>`) + addPill;
     const ab = $('addSongBtn');
     if (ab) ab.onclick = () => openNewSong();
+    if (window.Media && window.Media.bindList) window.Media.bindList(list);
   }
+  function setMediaMode(on) {
+    state.mediaMode = !!on;
+    store.set('mediaMode', state.mediaMode);
+    if (state.tab === 'sel') { state.tab = 'all'; store.set('tab', 'all'); state.sorting = false; }
+    renderList();
+    $('sidebar').scrollTop = 0;
+  }
+  $('mediaBtn').onclick = () => setMediaMode(!state.mediaMode);
+  $('mediaBar').onclick = () => setMediaMode(!state.mediaMode);
+  // reproducción del multimedia (la deciden el líder o Letras; la sigue la pantalla completa)
+  function setMState(p, fromSync) {
+    const n = Object.assign({}, state.ms, p);
+    n.vol = Math.max(0, Math.min(1, +n.vol || 0)); n.pos = Math.max(0, +n.pos || 0);
+    if (!fromSync) n.t = Date.now();
+    if (fromSync && (+p.t || 0) <= state.ms.t) return;
+    state.ms = n;
+    notifyView();
+    if (!fromSync) notify('media');
+  }
+  const msPos = (ms) => {
+    ms = ms || state.ms;
+    let p = ms.pos + (ms.play ? (Date.now() - ms.at) / 1000 : 0);
+    const m = MEDIA.find((x) => x.id === ms.id);
+    if (m && m.dur) p = ms.loop ? p % m.dur : Math.min(p, m.dur);
+    return p;
+  };
 
   // ---------- Canción ----------
   const isLabelLine = (line) => line.trim().length < 40 &&
@@ -547,6 +601,16 @@
   function renderSheet() {
     const s = state.current;
     if (!s) return;
+    if (s.media) {
+      // una sola «estrofa»: la vista previa; al tocarla se proyecta
+      state.paraCount = 1;
+      $('sheet').innerHTML = `<div class="para media-para${state.para === 0 ? ' sel' : ''}" data-i="0" tabindex="0"><div class="mv-prev" id="mvPrev"></div>` +
+        `<div class="mv-hint">${state.para === 0 ? '● En la pantalla completa' : 'Toca para proyectarlo en la pantalla completa'}</div></div><div class="mv-ctl" id="mvCtl"></div>`;
+      $('sheet').style.fontSize = '';
+      if (window.Media) window.Media.renderView(s.media);
+      notifyView();
+      return;
+    }
     const shift = state.shifts[s.code] || 0;
     const flats = s.key ? C.prefersFlats(s.key.semi + shift, s.key.minor) : false;
     // Párrafos fijos (bloques separados por líneas en blanco), iguales con o sin acordes
@@ -692,7 +756,12 @@
     if (i !== null && (!Number.isInteger(i) || i < 0 || i >= state.paraCount)) return;
     state.para = i;
     state.sub = 0;
+    // proyectar un archivo multimedia: empieza parado al principio (si no era el que ya estaba)
+    if (i === 0 && state.current && state.current.media && state.ms.id !== state.current.code && !fromSync) {
+      setMState({ id: state.current.code, play: false, pos: 0, at: Date.now(), loop: false });
+    }
     $('sheet').querySelectorAll('.para').forEach((el) => el.classList.toggle('sel', +el.dataset.i === i));
+    if (state.current && state.current.media) { const h = $('sheet').querySelector('.mv-hint'); if (h) h.textContent = i === 0 ? '● En la pantalla completa' : 'Toca para proyectarlo en la pantalla completa'; }
     if (i !== null && !document.body.classList.contains('screen-mode')) centerPara(i);
     notifyView();
     if (!fromSync) notify('para');
@@ -792,7 +861,7 @@
     if (next) { $('nextLink').href = '#' + next.code; $('nextLink').textContent = next.title + ' →'; }
   }
   function showSong(code) {
-    const s = SONGS.find((x) => x.code === code);
+    const s = findItem(code);
     document.body.classList.toggle('reading', !!s);
     $('toolbar').hidden = !s;
     $('screenBtn').hidden = !s;
@@ -810,6 +879,8 @@
     state.current = s;
     $('welcome').hidden = true;
     $('song').hidden = false;
+    document.body.classList.toggle('media-open', !!s.media);
+    if (s.media) { showMediaItem(s); return; }
     $('songCode').textContent = s.code;
     $('songTitle').textContent = s.title;
     renderNote(s);
@@ -820,6 +891,24 @@
     document.title = s.title + ' · Cancionero';
     if (!inL(s, state.list)) setList(listsOf(s)[0], true);
     $('listsBtn').onclick = (e) => { e.stopPropagation(); openListsMenu(s, e.currentTarget); };
+    const ls = navList(s);
+    updatePager(ls, ls.indexOf(s));
+    renderSheet();
+    renderList();
+    notifyView();
+    $('content').scrollTop = 0;
+    const a = document.querySelector('.song-list a.active');
+    if (a && a.scrollIntoView) a.scrollIntoView({ block: 'nearest' });
+  }
+
+  // ---------- Un archivo multimedia abierto ----------
+  function showMediaItem(s) {
+    const m = s.media;
+    $('songCode').textContent = mediaKind(m);
+    $('songTitle').textContent = s.title;
+    $('songNote').hidden = true;
+    $('songTags').innerHTML = '';
+    document.title = s.title + ' · Cancionero';
     const ls = navList(s);
     updatePager(ls, ls.indexOf(s));
     renderSheet();
@@ -1122,11 +1211,11 @@
       if (typeof blank === 'boolean') setBlank(blank, true);
       const cur = state.current ? state.current.code : '';
       if (typeof song === 'string' && song !== cur) {
-        if (song && !SONGS.some((x) => x.code === song)) return;
+        if (song && !findItem(song)) return;
         syncHash = song;
         location.hash = song ? '#' + song : '';
       }
-      const target = song ? SONGS.find((x) => x.code === song) : null;
+      const target = song ? findItem(song) : null;
       if (target && Number.isInteger(shift) && shift >= -11 && shift <= 11 &&
           signed(shift) !== signed(state.shifts[target.code] || 0)) {
         if (signed(shift)) state.shifts[target.code] = signed(shift); else delete state.shifts[target.code];
@@ -1152,6 +1241,16 @@
     lyricParas: () => lyricParas(),
     paraCita: (i) => paraCita(state.current, i === undefined ? state.para : i),
     title: () => (state.current ? state.current.title : ''),
+    // ---- Multimedia ----
+    media: () => MEDIA.slice(),
+    mediaCur: () => (state.current && state.current.media ? state.current.media : null),
+    mediaById: (id) => MEDIA.find((m) => m.id === id) || null,
+    mstate: () => Object.assign({}, state.ms),
+    setMState: (p, fromSync) => setMState(p, fromSync),
+    msPos: (ms) => msPos(ms),
+    mediaMode: () => state.mediaMode,
+    setMediaMode: (on) => setMediaMode(on),
+    open: (code) => { location.hash = '#' + code; },
     para: () => state.para,
     paraCount: () => state.paraCount,
     selectPara: (i) => selectPara(i),
@@ -1366,6 +1465,9 @@
       UPPER_CATS = listById('meriba').cats || [];
       baseCustom = Array.isArray(doc.customCats) ? doc.customCats.slice() : [];
       setBaseSel(doc.selections, doc.selection);
+      MEDIA = Array.isArray(doc.media) ? doc.media.slice() : [];
+      Object.keys(mediaObjs).forEach((id) => { if (!MEDIA.some((m) => m.id === id)) delete mediaObjs[id]; });
+      MEDIA.forEach(mediaObj);
       // ajustes comunes de Drive (si no hay un cambio propio pendiente)
       const pend = store.get('settingsPending', null), ds = doc.settings || {};
       if (pend && pend.maxChars === (+ds.maxChars || 0)) store.set('settingsPending', null);
@@ -1400,6 +1502,7 @@
       if (state.category && !allCats().includes(state.category)) state.category = null;
       renderLists(); renderChips(); renderList();
       if (!cur) { const h = decodeURIComponent(location.hash.replace(/^#\/?/, '')); if (h && SONGS.some((x) => x.code === h)) showSong(h); }
+      else if (cur.media) { if (!MEDIA.some((m) => m.id === cur.code)) location.hash = ''; else { cur.title = cur.media.name; showSong(cur.code); } }
       else if (!SONGS.includes(cur)) location.hash = '';
       else if (cur && sig(cur) !== before) {
         const y = $('content').scrollTop, para = state.para;

@@ -31,6 +31,7 @@
   el.id = 'screen'; el.className = 'screen'; el.hidden = true;
   el.innerHTML = `
     <div class="scr-stage" id="scrStage"><div class="scr-text" id="scrText"></div></div>
+    <div class="scr-media-box" id="scrMediaBox"></div>
     <div class="scr-guide" id="scrGuide"></div>
     <div class="scr-line h" data-m="t" title="Arrastra: borde superior del texto"></div>
     <div class="scr-line h" data-m="b" title="Arrastra: borde inferior del texto"></div>
@@ -88,11 +89,15 @@
   const curChunks = () => { const i = A.para(); return i === null || i === undefined ? [] : chunksOf(A.lyricParas()[i] || []); };
   // Solo se proyectan estrofas, nunca el título. Al cambiar de canción (sin párrafo elegido)
   // la pantalla no cambia: sigue la última estrofa hasta que se marque una de la nueva canción.
-  let shown = '', shownCita = false;
+  let shown = '', shownCita = false, shownMedia = null;
   function content() {
     const i = A.para();
     if (A.blank && A.blank()) return '';
-    if (!A.title() || i === null || i === undefined) return shown;
+    if (!A.title() || i === null || i === undefined) return shownMedia ? '' : shown;
+    // un archivo multimedia proyectado
+    const mc = A.mediaCur && A.mediaCur();
+    if (mc) { shownMedia = mc.id; shown = ''; shownCita = false; return ''; }
+    shownMedia = null;
     const ch = curChunks();
     shown = (ch[Math.min(A.sub(), ch.length - 1)] || []).join('\n');
     shownCita = !!(A.paraCita && A.paraCita());
@@ -137,6 +142,10 @@
     txt.style.fontWeight = cfg.bold ? '700' : '400';
     const c = content();
     el.classList.toggle('cita', citaNow());
+    // multimedia: se ve a pantalla completa (sin controles); con la pantalla en negro, se oculta
+    const showM = shownMedia && !(A.blank && A.blank());
+    el.classList.toggle('media-on', !!showM);
+    if (window.Media) { if (shownMedia) window.Media.showOnScreen($('scrMediaBox'), shownMedia); else window.Media.hideOnScreen(); }
     if (txt.textContent !== c) {
       txt.classList.remove('show'); void txt.offsetWidth;
       txt.textContent = c;
@@ -171,6 +180,7 @@
     wake(); render();
   }
   function close() {
+    if (window.Media) window.Media.hideOnScreen();
     if (isFs()) exitFs();
     setClean(false);
     on = false; el.hidden = true;

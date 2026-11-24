@@ -38,14 +38,17 @@
     seq: 0,
     applying: false,
     heartbeat: null,
-    connected: false
+    connected: false,
+    ct: 0,                  // líder: cuándo cambió su estado (para sincronizarse con un segundo líder)
+    co: false,              // soy el segundo líder (autorizado por el primero)
+    asking: null            // petición para ser segundo líder: { to, t }
   };
 
   // ---------- Emisor ----------
   function snapshot() {
     const s = window.App.getState();
     if (live.mode === 'letras') return { v: 2, kind: 'para', seq: ++live.seq, song: live.last ? live.last.song : '', para: live.last ? live.last.para : null, sub: live.last ? live.last.sub || 0 : 0, pt: live.last ? live.last.pt : 0, blank: s.blank, bt: live.blankT };
-    return { v: 2, seq: ++live.seq, song: s.song, shift: s.shift, para: s.para, sub: s.sub, mc: window.App.maxChars(), pt: live.paraT, blank: s.blank, bt: live.blankT, ps: window.App.pres(), rv: window.Cloud ? window.Cloud.rev() : 0 };
+    return { v: 2, seq: ++live.seq, song: s.song, shift: s.shift, para: s.para, sub: s.sub, mc: window.App.maxChars(), pt: live.paraT, ct: live.ct, blank: s.blank, bt: live.blankT, ps: window.App.pres(), ms: window.App.mstate(), rv: window.Cloud ? window.Cloud.rev() : 0 };
   }
   const followerMode = () => live.mode === 'receptor' || live.mode === 'letras';
   function send() {
@@ -68,12 +71,19 @@
     const pt = typeof d.pt === 'number' ? d.pt : 0;
     // pantalla en negro: gana el cambio más reciente (del líder o de Letras)
     if (typeof d.blank === 'boolean' && typeof d.bt === 'number' && d.bt > live.blankT && live.mode !== 'off' &&
-        (d.kind === 'para' ? isRole(msg.peer, 'letras') : (live.mode === 'emisor' ? false : (!live.following || msg.peer === live.following)))) {
+        (d.kind === 'para' ? isRole(msg.peer, 'letras') : (live.mode === 'emisor' ? isRole(msg.peer, 'emisor') : (!live.following || msg.peer === live.following)))) {
       live.blankT = d.bt;
       if (window.App.blank() !== d.blank) {
         window.App.apply({ blank: d.blank });
         if (live.mode === 'emisor') setTimeout(send, 250);
       }
+    }
+    // ---- Letras controla el multimedia ----
+    if (d.kind === 'media') {
+      if (!isRole(msg.peer, 'letras') || !d.ms || typeof d.ms !== 'object') return;
+      if (live.mode === 'emisor') { if ((+d.ms.t || 0) > window.App.mstate().t) { window.App.setMState(d.ms, true); setTimeout(send, 150); } }
+      else if (followerMode()) window.App.setMState(d.ms, true);
+      return;
     }
     // ---- Letras ha pasado un párrafo ----
     if (d.kind === 'para') {
@@ -95,6 +105,20 @@
       }
       return;
     }
+    // ---- Otro líder (hay dos): el cambio más reciente gana y lo reenvía el primero ----
+    if (live.mode === 'emisor' && !d.kind && isRole(msg.peer, 'emisor')) {
+      if ((+d.ct || 0) > live.ct) {
+        live.ct = +d.ct;
+        live.applying = true;
+        if (Number.isInteger(d.mc) && d.mc !== window.App.maxChars()) window.App.setMaxChars(d.mc, false);
+        if (d.ps && typeof d.ps === 'object') window.App.setPres(d.ps, true);
+        if (d.ms && typeof d.ms === 'object') window.App.setMState(d.ms, true);
+        window.App.apply({ song: d.song, shift: d.shift, para, sub });
+        setTimeout(() => { live.applying = false; }, 450);
+        setTimeout(send, 500);
+      }
+      return;
+    }
     // ---- Estado del líder ----
     if (!followerMode()) return;
     if (!live.following) setFollowing(msg.peer);
@@ -105,6 +129,7 @@
     if (Number.isInteger(d.mc) && d.mc !== window.App.maxChars()) window.App.setMaxChars(d.mc, false);
     // tamaño y modo de la letra en la pantalla completa, como los decide el líder
     if (d.ps && typeof d.ps === 'object') window.App.setPres(d.ps, true);
+    if (d.ms && typeof d.ms === 'object') window.App.setMState(d.ms, true);
     const prev = live.last;
     live.last = { song: d.song, shift: d.shift, para, sub, pt };
     // si Letras pasó un párrafo más reciente de esta canción, se mantiene
@@ -134,7 +159,13 @@
 
   // Cambios hechos por la propia persona
   window.App.onChange((why) => {
-    if (why === 'pres') { if (live.mode === 'emisor') send(); return; }
+    if (why === 'pres') { if (live.mode === 'emisor') { if (!live.applying) live.ct = Date.now(); send(); } return; }
+    if (why === 'media') {
+      // reproducción del multimedia: la controlan el líder y Letras
+      if (live.mode === 'emisor') send();
+      else if (live.mode === 'letras' && live.room) live.room.emit('sync', { v: 2, kind: 'media', song: '', ms: window.App.mstate() }).catch(() => {});
+      return;
+    }
     if (why === 'blank') {
       // poner o quitar la pantalla en negro: solo el líder o Letras lo envían
       live.blankT = Date.now();
@@ -143,6 +174,7 @@
     }
     if (live.mode === 'emisor') {
       if (!live.applying && (why === 'para' || why === 'song')) live.paraT = Date.now();
+      if (!live.applying) live.ct = Date.now();
       send();
     } else if (live.mode === 'letras' && !live.applying && live.last) {
       const s = window.App.getState();
@@ -198,7 +230,7 @@
     } else if (m === 'emisor') {
       live.following = null;
       live.paraT = Date.now();
-      live.room.presence({ role: 'emisor', name: cleanName(live.name), follow: null }).catch(() => {});
+      live.room.presence({ role: 'emisor', name: cleanName(live.name), follow: null, co: live.co || null, ask: null }).catch(() => {});
       send();
       live.heartbeat = setInterval(send, 3000);
     } else {
@@ -212,6 +244,11 @@
   // Si otra persona ya ocupa ese papel, devuelve el motivo (y no se puede elegir)
   function takenMsg(m) {
     if (live.mode === m || !live.room) return '';
+    if (m === 'emisor') {
+      // puede haber dos líderes: el segundo, con permiso del primero
+      const ls = emitters();
+      return ls.length >= 2 ? 'Ya hay dos líderes en la sala (' + ls.map((p) => cleanName(p.presence.name) || 'sin nombre').join(' y ') + ').' : '';
+    }
     const p = peersList().find((x) => !x.sameTab && x.presence && x.presence.role === m);
     if (!p) return '';
     const n = cleanName(p.presence.name);
@@ -223,7 +260,9 @@
 
   function peersList() { try { return live.room ? live.room.peers() : []; } catch (e) { return []; } }
   function emitters() {
-    return peersList().filter((p) => !p.sameTab && p.presence && p.presence.role === 'emisor');
+    // el primer líder antes que el segundo (los receptores siguen al primero)
+    return peersList().filter((p) => !p.sameTab && p.presence && p.presence.role === 'emisor')
+      .sort((a, b) => (a.presence.co ? 1 : 0) - (b.presence.co ? 1 : 0));
   }
   // Al abrir «Ver en directo» sin estar activo, se mira la sala (sin papel) para ver quién está conectado
   const escH = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -238,6 +277,66 @@
     if (!live.watching) return;
     live.watching = false;
     if (live.mode === 'off' && live.room && !IN_CLAUDE) { disconnectP2P(); render(); }
+  }
+  // ---------- Segundo líder: se pide permiso al primero ----------
+  function requestLead() {
+    const lead = emitters()[0];
+    if (!lead || !live.room) return;
+    live.asking = { to: lead.peer, t: Date.now() };
+    live.room.presence({ ask: live.asking, name: cleanName(live.name) }).catch(() => {});
+    flash('Pidiendo permiso a ' + (cleanName(lead.presence.name) || 'el líder') + ' para ser también líder…');
+    clearTimeout(live.askTimer);
+    live.askTimer = setTimeout(() => {
+      if (!live.asking) return;
+      live.asking = null; if (live.room) live.room.presence({ ask: null }).catch(() => {});
+      flash('El líder no ha respondido. Puedes volver a pedirlo.');
+    }, 60000);
+  }
+  const answered = {};
+  function checkAsks() {
+    const ps = peersList();
+    // soy el que pide: ¿me han respondido?
+    if (live.asking) {
+      const lead = ps.find((p) => p.peer === live.asking.to);
+      const pr = lead && lead.presence;
+      if (!lead || pr.role !== 'emisor') { live.asking = null; if (live.room) live.room.presence({ ask: null }).catch(() => {}); }
+      else if (pr.grant && pr.grant.to === live.myPeer && pr.grant.t === live.asking.t) {
+        live.asking = null; clearTimeout(live.askTimer);
+        live.co = true; setMode('emisor');
+        flash('Ya eres el segundo líder: lo que cambies lo verán todos.');
+      } else if (pr.deny && pr.deny.to === live.myPeer && pr.deny.t === live.asking.t) {
+        live.asking = null; clearTimeout(live.askTimer);
+        if (live.room) live.room.presence({ ask: null }).catch(() => {});
+        flash((cleanName(pr.name) || 'El líder') + ' no ha autorizado un segundo líder.');
+      }
+    }
+    // soy el primer líder: ¿alguien pide permiso?
+    if (live.mode === 'emisor' && !live.co) {
+      const req = ps.find((p) => !p.sameTab && p.presence && p.presence.ask && p.presence.ask.to === live.myPeer && !answered[p.peer + ':' + p.presence.ask.t]);
+      showAsk(req || null);
+    } else showAsk(null);
+  }
+  function showAsk(p) {
+    let box = $('liveAsk');
+    if (!p) { if (box) box.hidden = true; return; }
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'liveAsk'; box.className = 'live-ask'; box.setAttribute('role', 'alertdialog');
+      document.body.appendChild(box);
+    }
+    const key = p.peer + ':' + p.presence.ask.t;
+    if (box.dataset.key === key && !box.hidden) return;
+    box.dataset.key = key;
+    box.innerHTML = '<p><b>' + escH(cleanName(p.presence.name) || 'Alguien') + '</b> quiere ser también líder.</p>' +
+      '<div><button type="button" class="pill" data-a="no">Rechazar</button><button type="button" class="pill primary" data-a="yes">Aceptar</button></div>';
+    box.hidden = false;
+    box.querySelectorAll('button').forEach((b) => {
+      b.onclick = () => {
+        answered[key] = true; box.hidden = true;
+        const ans = { to: p.peer, t: p.presence.ask.t };
+        live.room.presence(b.dataset.a === 'yes' ? { grant: ans, deny: null } : { deny: ans, grant: null }).catch(() => {});
+      };
+    });
   }
   function pickEmitter() { const e = emitters(); return e.length ? e[0].peer : null; }
   function peerLabel(p, i) {
@@ -475,6 +574,8 @@
       b.onclick = () => {
         const msg = takenMsg(b.dataset.mode);
         if (msg) { flash(msg); return; }
+        if (b.dataset.mode === 'emisor' && live.mode !== 'emisor' && emitters().length === 1) { requestLead(); return; }
+        live.co = false;
         setMode(b.dataset.mode);
       };
     });
@@ -552,6 +653,7 @@
       const me = ch.peers.find((p) => p.sameTab);
       if (me) live.myPeer = me.peer;
       if ((live.mode === 'emisor' || live.mode === 'letras') && ch.joined.some((p) => !p.sameTab)) send();
+      checkAsks();
       if (followerMode()) {
         if (live.following && ch.left.some((p) => p.peer === live.following)) { setFollowing(pickEmitter()); live.last = null; }
         else if (!live.following) { const e = pickEmitter(); if (e) setFollowing(e); }
