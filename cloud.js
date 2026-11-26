@@ -49,6 +49,7 @@
       case 'note': s = find(r.code); if (s) { if (r.text) s.comment = r.text; else delete s.comment; } break;
       case 'cats': s = find(r.code); if (s) s.categories = r.categories.slice(); break;
       case 'songLists': s = find(r.code); if (s) s.lists = r.lists.slice(); break;
+      case 'marks': (r.items || []).forEach((it) => { const x = find(it.code); if (x) { if (it.mark && it.mark !== x.code) x.mark = it.mark; else delete x.mark; } }); break;
       case 'mark': s = find(r.code); if (s) { if (r.mark) s.mark = r.mark; else delete s.mark; } break;
       case 'addSong': {
         if (find(r.song.code)) break;
@@ -193,7 +194,7 @@
     const n = pendingCount();
     return n ? '⏳ Guardando ' + n + ' cambio(s) en Drive…' : '☁ Se guarda en Drive para todos';
   }
-  const OPS = { settings: 'cambió el máximo de caracteres', listCats: 'cambió las colecciones de', sel: 'cambió la selección', addSong: 'añadió', lists: 'reordenó las listas', song: 'editó', note: 'comentó', cats: 'cambió colecciones de', songLists: 'cambió los cancioneros de', mark: 'cambió el marcador de', catLists: 'cambió los cancioneros de la colección', addCat: 'creó la colección', delCat: 'borró la colección', init: 'subió el cancionero' };
+  const OPS = { settings: 'cambió el máximo de caracteres', listCats: 'cambió las colecciones de', sel: 'cambió la selección', addSong: 'añadió', lists: 'reordenó las listas', song: 'editó', note: 'comentó', cats: 'cambió colecciones de', songLists: 'cambió los cancioneros de', mark: 'cambió el marcador de', marks: 'cambió los marcadores de', catLists: 'cambió los cancioneros de la colección', addCat: 'creó la colección', delCat: 'borró la colección', init: 'subió el cancionero' };
   function renderUi() {
     const ob = $('cloudOpen');
     if (ob) { ob.hidden = false; ob.textContent = st.ok === false ? '☁ Sin conexión' : '☁ Drive'; }

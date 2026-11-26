@@ -114,7 +114,7 @@ function doPost(e) {
     doc.rev = (doc.rev || 0) + 1;
     doc.updated = new Date().toISOString();
     doc.log = Array.isArray(doc.log) ? doc.log : [];
-    doc.log.push({ t: doc.updated, op: req.op, what: str_(req.code || req.name || req.list || (req.media && req.media.name) || req.id || '', 60), by: str_(req.by, 40) });
+    doc.log.push({ t: doc.updated, op: req.op, what: str_(req.code || req.name || req.list || (req.items ? req.items.length + ' canciones' : '') || (req.media && req.media.name) || req.id || '', 60), by: str_(req.by, 40) });
     if (doc.log.length > 500) doc.log = doc.log.slice(-500);
     file_().setContent(JSON.stringify(doc));
     props.setProperty('REV', String(doc.rev));
@@ -183,6 +183,16 @@ function apply_(doc, r) {
       if (!s || typeof r.mark !== 'string') return 'cancion';
       var mk = r.mark.replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 12);
       if (mk && mk !== s.code) s.mark = mk; else delete s.mark;
+      return null;
+    case 'marks':
+      // varios marcadores a la vez: r.items = [{ code, mark }]
+      if (!Array.isArray(r.items) || r.items.length > 1000) return 'marcadores';
+      r.items.forEach(function (it) {
+        var x = it && typeof it.code === 'string' ? find_(doc, it.code) : null;
+        if (!x || typeof it.mark !== 'string') return;
+        var m2 = it.mark.replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 12);
+        if (m2 && m2 !== x.code) x.mark = m2; else delete x.mark;
+      });
       return null;
     case 'songLists':
       // cancioneros en los que aparece una canción (al menos uno)
