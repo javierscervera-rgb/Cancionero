@@ -352,9 +352,9 @@
     });
     const add = document.createElement('button');
     add.className = 'chip add';
-    add.textContent = '+ Nueva colección';
-    add.title = 'Crear una colección nueva';
-    add.onclick = () => { if (window.Collections) window.Collections.openCreate(); };
+    add.textContent = '✎ Edición';
+    add.title = 'Crear y borrar colecciones y elegir en qué cancioneros aparece cada una';
+    add.onclick = () => { if (window.Edition) window.Edition.open(); else if (window.Collections) window.Collections.openCreate(); };
     wrap.appendChild(add);
   }
 
@@ -1424,6 +1424,16 @@
       return n;
     },
     // ---- Colecciones ----
+    // ---- Edición de colecciones: cada colección y los cancioneros en los que aparece ----
+    catMatrix: () => {
+      const names = [];
+      LISTS.forEach((l) => (l.cats || []).forEach((c) => { if (!names.includes(c)) names.push(c); }));
+      customCats().forEach((c) => { if (!names.includes(c)) names.push(c); });
+      return names.map((c) => ({ name: c, label: catLabel(c), custom: customCats().includes(c),
+        lists: customCats().includes(c) ? LISTS.map((l) => l.id) : LISTS.filter((l) => (l.cats || []).includes(c)).map((l) => l.id),
+        count: SONGS.filter((s) => s.categories.includes(c)).length }));
+    },
+    listsInfo: () => LISTS.map((l) => ({ id: l.id, name: l.name })),
     collections: () => (state.current ? listsOf(state.current) : [state.list]).flatMap((l) => catsFor(l)).filter((c, i, a) => a.indexOf(c) === i).map((c) => ({ name: c, label: catLabel(c), custom: !CATS.includes(c), count: SONGS.filter((s) => s.categories.includes(c)).length })),
     songCats: () => (state.current ? state.current.categories.slice() : []),
     setSongCats(code, list) {

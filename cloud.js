@@ -62,7 +62,12 @@
       case 'listCats': (doc.lists || []).forEach((l) => { if (l.id === r.list) l.cats = r.cats.slice(); }); break;
       case 'sel': doc.selections = doc.selections || {}; delete doc.selection; doc.selections[r.list] = r.codes.slice(); break;
       case 'addCat': doc.customCats = doc.customCats || []; if (!doc.customCats.includes(r.name)) doc.customCats.push(r.name); break;
+      case 'catLists':
+        (doc.lists || []).forEach((l) => { l.cats = l.cats || []; const has = l.cats.includes(r.name), want = r.lists.includes(l.id); if (want && !has) l.cats.push(r.name); if (!want && has) l.cats = l.cats.filter((c) => c !== r.name); });
+        doc.customCats = (doc.customCats || []).filter((c) => c !== r.name);
+        break;
       case 'delCat':
+        (doc.lists || []).forEach((l) => { l.cats = (l.cats || []).filter((c) => c !== r.name); });
         doc.customCats = (doc.customCats || []).filter((c) => c !== r.name);
         doc.songs.forEach((x) => { x.categories = (x.categories || []).filter((c) => c !== r.name); });
         break;
@@ -108,13 +113,7 @@
     (window.BUNDLE_SONGS || []).filter((x) => x && x.code && !have.has(x.code)).forEach((x) => ops.push({ op: 'addSong', code: x.code,
       song: { code: x.code, title: x.title, lines: x.lines, categories: x.categories || [], list: x.list || '' } }));
     // colecciones oficiales nuevas incluidas en la web (p. ej. «⛪️Textos Misa»): se añaden al cancionero en Drive
-    (window.BUNDLE_LISTS || []).forEach((bl) => {
-      const dl = (st.doc.lists || []).find((x) => x.id === bl.id);
-      if (!dl || !Array.isArray(bl.cats)) return;
-      const have = dl.cats || [];
-      if (bl.cats.every((c) => have.includes(c))) return;
-      ops.push({ op: 'listCats', list: bl.id, cats: bl.cats.concat(have.filter((c) => !bl.cats.includes(c))) });
-    });
+    // (las colecciones de cada cancionero ya se editan en ✎ Edición: Drive manda y no se vuelven a añadir solas)
     // canciones creadas desde la web en este dispositivo
     (p.newSongs || []).filter((x) => !have.has(x.code)).forEach((x) => ops.push({ op: 'addSong', code: x.code, song: x }));
     p.addCats.forEach((name) => ops.push({ op: 'addCat', name }));
@@ -194,7 +193,7 @@
     const n = pendingCount();
     return n ? '⏳ Guardando ' + n + ' cambio(s) en Drive…' : '☁ Se guarda en Drive para todos';
   }
-  const OPS = { settings: 'cambió el máximo de caracteres', listCats: 'cambió las colecciones de', sel: 'cambió la selección', addSong: 'añadió', lists: 'reordenó las listas', song: 'editó', note: 'comentó', cats: 'cambió colecciones de', songLists: 'cambió los cancioneros de', mark: 'cambió el marcador de', addCat: 'creó la colección', delCat: 'borró la colección', init: 'subió el cancionero' };
+  const OPS = { settings: 'cambió el máximo de caracteres', listCats: 'cambió las colecciones de', sel: 'cambió la selección', addSong: 'añadió', lists: 'reordenó las listas', song: 'editó', note: 'comentó', cats: 'cambió colecciones de', songLists: 'cambió los cancioneros de', mark: 'cambió el marcador de', catLists: 'cambió los cancioneros de la colección', addCat: 'creó la colección', delCat: 'borró la colección', init: 'subió el cancionero' };
   function renderUi() {
     const ob = $('cloudOpen');
     if (ob) { ob.hidden = false; ob.textContent = st.ok === false ? '☁ Sin conexión' : '☁ Drive'; }

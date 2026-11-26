@@ -255,7 +255,20 @@ function apply_(doc, r) {
       doc.customCats = doc.customCats || [];
       if (doc.customCats.indexOf(n) < 0) doc.customCats.push(n);
       return null;
+    case 'catLists':
+      // en qué cancioneros aparece una colección (la crea si no existía): r.name, r.lists = [ids]
+      var cn = str_(r.name, 40).replace(/[<>\u0000-\u001f]/g, '').trim();
+      if (!cn || !Array.isArray(r.lists)) return 'nombre';
+      doc.lists.forEach(function (l) {
+        l.cats = Array.isArray(l.cats) ? l.cats : [];
+        var has = l.cats.indexOf(cn) >= 0, want = r.lists.indexOf(l.id) >= 0;
+        if (want && !has) l.cats.push(cn);
+        if (!want && has) l.cats = l.cats.filter(function (c) { return c !== cn; });
+      });
+      doc.customCats = (doc.customCats || []).filter(function (c) { return c !== cn; });
+      return null;
     case 'delCat':
+      doc.lists.forEach(function (l) { l.cats = (l.cats || []).filter(function (c) { return c !== r.name; }); });
       doc.customCats = (doc.customCats || []).filter(function (c) { return c !== r.name; });
       doc.songs.forEach(function (x) { x.categories = (x.categories || []).filter(function (c) { return c !== r.name; }); });
       return null;
