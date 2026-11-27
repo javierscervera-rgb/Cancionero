@@ -1154,3 +1154,4 @@ audio.scr-media { display: none; }
 .sheet .para.bold .ch { font-size: .9em; }
 .sheet small.rep { font-size: .85em; }
 .sheet .para.cita { font-size: .92em; }
+.sheet b.bo { font-weight: 700; }

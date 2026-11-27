@@ -247,7 +247,10 @@
       else curP.push(j);
     });
     if (curP.length) s.paras.push(curP);
-    s.paras = fitParas(s, s.paras);
+    // cada trozo recuerda su estrofa original (para Cita y negrita, aunque se parta por el máximo de caracteres)
+    const raw = s.paras;
+    s.paras = fitParas(s, raw);
+    s.paraGroup = s.paras.map((ch) => raw.find((g) => g.includes(ch[0])) || ch);
     (s.variants || []).forEach((v) => {
       const k = C.detectKey(v);
       if (k && s.key) {
@@ -666,31 +669,34 @@
     /^\s*(\(.*\)|(CORO|VERSO|PUENTE|INTRO|ESTRIBILLO|CEJILLA)\b.*)\s*$/i.test(line);
 
   // Una estrofa entera entre corchetes [ … ] se proyecta en modo Cita (los corchetes no se ven).
+  // Se mira la estrofa original completa, aunque se haya partido por el máximo de caracteres.
   // Los corchetes dentro de una línea (p. ej. repeticiones «[te vengo a ofrecer]») no cuentan.
-  const citaLines = (s, i) => (s && s.paras[i] ? s.paras[i].filter((k) => !s.chordFlags[k] && s.lines[k].trim() && !isLabelLine(s.lines[k])) : []);
+  const lyricIdx = (s, idxs) => idxs.filter((k) => !s.chordFlags[k] && s.lines[k].trim() && !isLabelLine(s.lines[k]));
+  const groupOf = (s, i) => (s && s.paraGroup && s.paraGroup[i]) || (s && s.paras[i]) || [];
+  const citaLines = (s, i) => (s && s.paras[i] ? lyricIdx(s, groupOf(s, i)) : []);
   const paraCita = (s, i) => {
     const L = citaLines(s, i);
     return L.length > 0 && /^\s*\[/.test(s.lines[L[0]]) && /\]\s*$/.test(s.lines[L[L.length - 1]]);
   };
-  // Estrofa entera entre ** … **: en negrita y un poco más grande (los ** no se ven)
+  // Estrofa entera entre ** … **: en negrita y un poco más grande. (Cualquier texto entre ** también
+  // se ve en negrita, aunque sea un trozo de línea; los ** no se ven.)
   const paraBold = (s, i) => {
     const L = citaLines(s, i);
     return L.length > 0 && /^\s*\*\*/.test(s.lines[L[0]]) && /\*\*\s*$/.test(s.lines[L[L.length - 1]]);
   };
-  function boldStrip(s, i, k, text, keepWidth) {
-    if (!paraBold(s, i)) return text;
-    const L = citaLines(s, i);
-    if (k === L[0] && !keepWidth) text = text.replace(/^(\s*)\*\*/, '$1');
-    if (k === L[L.length - 1]) text = text.replace(/\*\*\s*$/, '');
-    return text;
+  // el trozo (si la estrofa se partió) empieza en negrita si hay un ** abierto antes, en la misma estrofa
+  function boldOpenAt(s, i) {
+    const g = groupOf(s, i), first = (s.paras[i] || [])[0];
+    let open = false;
+    for (const k of g) { if (k === first) break; if (!s.chordFlags[k]) open = ((s.lines[k].match(/\*\*/g) || []).length % 2) ? !open : open; }
+    return open;
   }
-  // posiciones de «**» o «[» al principio de una estrofa (se dejan para alinear acordes, pero no se ven)
+  // posición de «[» al principio de una estrofa Cita (se deja para alinear acordes, pero no se ve)
   function leadHide(s, i, k) {
     const L = citaLines(s, i), set = new Set();
-    if (k !== L[0]) return set;
-    const line = s.lines[k], st = line.length - line.replace(/^\s+/, '').length;
-    if (paraBold(s, i)) { set.add(st); set.add(st + 1); }
-    else if (paraCita(s, i)) set.add(st);
+    if (k !== L[0] || !paraCita(s, i)) return set;
+    const line = s.lines[k];
+    set.add(line.length - line.replace(/^\s+/, '').length);
     return set;
   }
   // quita el «[» del principio y el «]» del final de una estrofa Cita
@@ -707,7 +713,7 @@
     if (!s) return [];
     return s.paras.map((idxs, pi) => idxs
       .filter((i) => !s.chordFlags[i] && !isLabelLine(s.lines[i]))
-      .map((i) => boldStrip(s, pi, i, citaStrip(s, pi, i, s.lines[i])).replace(/\s+/g, ' ').trim())
+      .map((i) => citaStrip(s, pi, i, s.lines[i]).replace(/\*\*/g, '').replace(/\s+/g, ' ').trim())
       .filter(Boolean));
   }
 
@@ -732,6 +738,7 @@
     // Párrafos fijos (bloques separados por líneas en blanco), iguales con o sin acordes
     const paras = s.paras.map((idxs, pi) => {
       const out = [];
+      const bst = { b: boldOpenAt(s, pi) }; // negrita abierta (**) que sigue de una línea a otra
       idxs.forEach((i, k) => {
         const line = s.lines[i];
         if (s.chordFlags[i]) {
@@ -740,14 +747,14 @@
           // acordes encima de una línea de letra: van pegados a su sílaba (así pueden saltar de línea juntos)
           const nx = idxs[k + 1];
           if (nx !== undefined && !s.chordFlags[nx] && s.lines[nx].trim() && !isLabelLine(s.lines[nx])) {
-            out.push(pairHtml(groups, boldStrip(s, pi, nx, citaStrip(s, pi, nx, s.lines[nx], true), true), leadHide(s, pi, nx)));
+            out.push(pairHtml(groups, citaStrip(s, pi, nx, s.lines[nx], true), leadHide(s, pi, nx), bst));
             out.skip = nx;
             return;
           }
           out.push('<span class="cl">' + groups.map((g) => g.chord ? `<b class="ch">${esc(g.text)}</b>` : esc(g.text)).join('') + '</span>');
         } else {
           if (out.skip === i) return;
-          out.push(isLabelLine(line) ? `<span class="lbl">${esc(line)}</span>` : repEsc()(boldStrip(s, pi, i, citaStrip(s, pi, i, line))));
+          out.push(isLabelLine(line) ? `<span class="lbl">${esc(line)}</span>` : repEsc(null, bst)(citaStrip(s, pi, i, line)));
         }
       });
       if (!out.length) out.push('<span class="lbl">♪</span>');
@@ -800,13 +807,24 @@
   const wReg = (t) => { mctx.font = '16px ' + MFONT; return mctx.measureText(t).width; };
   const wBold = (t) => { mctx.font = '600 16px ' + MFONT; return mctx.measureText(t).width; };
   // Texto entre corchetes (p. ej. repeticiones «[te vengo a ofrecer]»): un poco más pequeño
-  function repEsc(hide) {
-    let inB = false, pos = 0;
+  // y texto entre ** … **: en negrita (st = estado compartido por las líneas de una estrofa)
+  function repEsc(hide, st) {
+    st = st || { b: false };
+    let inB = false, pos = 0, star = false;
     return (t) => {
       let out = '', buf = '';
-      const flush = () => { if (buf) { out += inB ? `<small class="rep">${esc(buf)}</small>` : esc(buf); buf = ''; } };
-      for (const ch of t) {
-        if (hide && hide.has(pos++)) continue; // marcas («**», «[») que ocupan sitio para alinear acordes pero no se ven
+      const wrap = (x) => { let h = esc(x); if (inB) h = `<small class="rep">${h}</small>`; if (st.b) h = `<b class="bo">${h}</b>`; return h; };
+      const flush = () => { if (buf) { out += wrap(buf); buf = ''; } };
+      const chars = [...t];
+      for (let q = 0; q < chars.length; q++) {
+        const ch = chars[q];
+        if (hide && hide.has(pos)) { pos++; continue; } // «[» que ocupa sitio para alinear acordes pero no se ve
+        pos++;
+        // «**» abre o cierra la negrita (no se ve; los dos asteriscos pueden caer en trozos distintos)
+        if (ch === '*' && (star || chars[q + 1] === '*')) {
+          if (star) { star = false; flush(); st.b = !st.b; } else { star = true; }
+          continue;
+        }
         if (ch === '[' && !inB) { flush(); inB = true; buf = ch; }
         else if (ch === ']' && inB) { buf += ch; flush(); inB = false; }
         else buf += ch;
@@ -815,9 +833,9 @@
       return out;
     };
   }
-  function pairHtml(groups, lyric, hide) {
+  function pairHtml(groups, lyric, hide, st) {
     lyric = lyric.replace(/\s+$/, '');
-    const escR = repEsc(hide);
+    const escR = repEsc(hide, st);
     // posición (en píxeles) de cada acorde en su línea → sílaba de la letra que tiene debajo
     const pre = [0];
     for (let j = 0; j < lyric.length; j++) pre.push(pre[j] + wReg(lyric[j]));
