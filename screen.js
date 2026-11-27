@@ -149,11 +149,14 @@
     const txt = $('scrText');
     txt.style.fontFamily = FONTS[cfg.font].css;
     // alineación: el texto y el bloque se pegan a la izquierda, al centro o a la derecha del cuadro
-    txt.style.textAlign = cfg.align;
-    stage.style.justifyContent = cfg.align === 'left' ? 'flex-start' : cfg.align === 'right' ? 'flex-end' : 'center';
+
     txt.style.fontWeight = cfg.bold || (A.paraBold && A.para() !== null && A.para() !== undefined && A.paraBold()) ? '700' : '400';
     const c = content();
     el.classList.toggle('cita', citaNow());
+    // alineación elegida; el modo Cita (estrofa entre [ ]) siempre va centrado: recuadro y texto
+    const al = citaNow() ? 'center' : cfg.align;
+    txt.style.textAlign = al;
+    stage.style.justifyContent = al === 'left' ? 'flex-start' : al === 'right' ? 'flex-end' : 'center';
     // multimedia: se ve a pantalla completa (sin controles); con la pantalla en negro, se oculta
     const showM = shownMedia && !(A.blank && A.blank());
     el.classList.toggle('media-on', !!showM);
