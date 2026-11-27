@@ -1148,3 +1148,9 @@ audio.scr-media { display: none; }
 .song-author:hover { color: var(--accent); opacity: 1; }
 .author-in { width: min(420px, 80vw); font: inherit; font-style: normal; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--accent); background: var(--bg); color: var(--ink); }
 [data-theme="color"] .song-author { margin-left: auto; margin-right: auto; }
+
+/* Estrofa entre ** … **: negrita y algo más grande; texto entre corchetes: algo más pequeño */
+.sheet .para.bold { font-weight: 700; font-size: 1.12em; }
+.sheet .para.bold .ch { font-size: .9em; }
+.sheet small.rep { font-size: .85em; }
+.sheet .para.cita { font-size: .92em; }

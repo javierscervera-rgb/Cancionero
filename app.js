@@ -672,11 +672,32 @@
     const L = citaLines(s, i);
     return L.length > 0 && /^\s*\[/.test(s.lines[L[0]]) && /\]\s*$/.test(s.lines[L[L.length - 1]]);
   };
+  // Estrofa entera entre ** … **: en negrita y un poco más grande (los ** no se ven)
+  const paraBold = (s, i) => {
+    const L = citaLines(s, i);
+    return L.length > 0 && /^\s*\*\*/.test(s.lines[L[0]]) && /\*\*\s*$/.test(s.lines[L[L.length - 1]]);
+  };
+  function boldStrip(s, i, k, text, keepWidth) {
+    if (!paraBold(s, i)) return text;
+    const L = citaLines(s, i);
+    if (k === L[0] && !keepWidth) text = text.replace(/^(\s*)\*\*/, '$1');
+    if (k === L[L.length - 1]) text = text.replace(/\*\*\s*$/, '');
+    return text;
+  }
+  // posiciones de «**» o «[» al principio de una estrofa (se dejan para alinear acordes, pero no se ven)
+  function leadHide(s, i, k) {
+    const L = citaLines(s, i), set = new Set();
+    if (k !== L[0]) return set;
+    const line = s.lines[k], st = line.length - line.replace(/^\s+/, '').length;
+    if (paraBold(s, i)) { set.add(st); set.add(st + 1); }
+    else if (paraCita(s, i)) set.add(st);
+    return set;
+  }
   // quita el «[» del principio y el «]» del final de una estrofa Cita
   function citaStrip(s, i, k, text, keepWidth) {
     if (!paraCita(s, i)) return text;
     const L = citaLines(s, i);
-    if (k === L[0]) text = text.replace(/^(\s*)\[/, keepWidth ? '$1 ' : '$1');
+    if (k === L[0] && !keepWidth) text = text.replace(/^(\s*)\[/, '$1');
     if (k === L[L.length - 1]) text = text.replace(/\]\s*$/, '');
     return text;
   }
@@ -686,7 +707,7 @@
     if (!s) return [];
     return s.paras.map((idxs, pi) => idxs
       .filter((i) => !s.chordFlags[i] && !isLabelLine(s.lines[i]))
-      .map((i) => citaStrip(s, pi, i, s.lines[i]).replace(/\s+/g, ' ').trim())
+      .map((i) => boldStrip(s, pi, i, citaStrip(s, pi, i, s.lines[i])).replace(/\s+/g, ' ').trim())
       .filter(Boolean));
   }
 
@@ -719,14 +740,14 @@
           // acordes encima de una línea de letra: van pegados a su sílaba (así pueden saltar de línea juntos)
           const nx = idxs[k + 1];
           if (nx !== undefined && !s.chordFlags[nx] && s.lines[nx].trim() && !isLabelLine(s.lines[nx])) {
-            out.push(pairHtml(groups, citaStrip(s, pi, nx, s.lines[nx], true)));
+            out.push(pairHtml(groups, boldStrip(s, pi, nx, citaStrip(s, pi, nx, s.lines[nx], true), true), leadHide(s, pi, nx)));
             out.skip = nx;
             return;
           }
           out.push('<span class="cl">' + groups.map((g) => g.chord ? `<b class="ch">${esc(g.text)}</b>` : esc(g.text)).join('') + '</span>');
         } else {
           if (out.skip === i) return;
-          out.push(isLabelLine(line) ? `<span class="lbl">${esc(line)}</span>` : esc(citaStrip(s, pi, i, line)));
+          out.push(isLabelLine(line) ? `<span class="lbl">${esc(line)}</span>` : repEsc()(boldStrip(s, pi, i, citaStrip(s, pi, i, line))));
         }
       });
       if (!out.length) out.push('<span class="lbl">♪</span>');
@@ -735,7 +756,7 @@
     state.paraCount = paras.length;
     if (state.para !== null && state.para >= paras.length) state.para = null;
     $('sheet').innerHTML = paras.map((p, i) =>
-      `<div class="para${i === state.para ? ' sel' : ''}${paraCita(s, i) ? ' cita' : ''}" data-i="${i}" tabindex="0">${p.join('\n')}</div>`).join('');
+      `<div class="para${i === state.para ? ' sel' : ''}${paraCita(s, i) ? ' cita' : ''}${paraBold(s, i) ? ' bold' : ''}" data-i="${i}" tabindex="0">${p.join('\n')}</div>`).join('');
     $('sheet').style.fontSize = state.font + 'px';
     fitSheet();
     if (state.para !== null) requestAnimationFrame(() => centerPara(state.para, false));
@@ -778,8 +799,25 @@
   const mctx = document.createElement('canvas').getContext('2d');
   const wReg = (t) => { mctx.font = '16px ' + MFONT; return mctx.measureText(t).width; };
   const wBold = (t) => { mctx.font = '600 16px ' + MFONT; return mctx.measureText(t).width; };
-  function pairHtml(groups, lyric) {
+  // Texto entre corchetes (p. ej. repeticiones «[te vengo a ofrecer]»): un poco más pequeño
+  function repEsc(hide) {
+    let inB = false, pos = 0;
+    return (t) => {
+      let out = '', buf = '';
+      const flush = () => { if (buf) { out += inB ? `<small class="rep">${esc(buf)}</small>` : esc(buf); buf = ''; } };
+      for (const ch of t) {
+        if (hide && hide.has(pos++)) continue; // marcas («**», «[») que ocupan sitio para alinear acordes pero no se ven
+        if (ch === '[' && !inB) { flush(); inB = true; buf = ch; }
+        else if (ch === ']' && inB) { buf += ch; flush(); inB = false; }
+        else buf += ch;
+      }
+      flush();
+      return out;
+    };
+  }
+  function pairHtml(groups, lyric, hide) {
     lyric = lyric.replace(/\s+$/, '');
+    const escR = repEsc(hide);
     // posición (en píxeles) de cada acorde en su línea → sílaba de la letra que tiene debajo
     const pre = [0];
     for (let j = 0; j < lyric.length; j++) pre.push(pre[j] + wReg(lyric[j]));
@@ -805,20 +843,20 @@
       const need = wBold(c.text) + 6;
       c.min = need > room ? (need / 16).toFixed(2) : 0;
     });
-    const unit = (c, t) => `<span class="u"${c.min ? ` style="min-width:${c.min}em"` : ''}><b class="ch">${esc(c.text)}</b>${esc(t)}</span>`;
+    const unit = (c, t) => `<span class="u"${c.min ? ` style="min-width:${c.min}em"` : ''}><b class="ch">${esc(c.text)}</b>${escR(t)}</span>`;
     let html = '';
     const re = /(\s+)|(\S+)/g;
     let m;
     while ((m = re.exec(lyric))) {
       const a = m.index, b = a + m[0].length;
       const inside = chords.filter((c) => c.at >= a && c.at < b);
-      if (!inside.length) { html += m[1] ? m[0] : `<span class="w">${esc(m[0])}</span>`; continue; }
+      if (!inside.length) { html += m[1] ? escR(m[0]) : `<span class="w">${escR(m[0])}</span>`; continue; }
       const cuts = [a].concat(inside.map((c) => c.at).filter((p) => p > a), [b]);
       let w = '';
       for (let j = 0; j < cuts.length - 1; j++) {
         const c = inside.find((q) => q.at === cuts[j]);
         const t = lyric.slice(cuts[j], cuts[j + 1]);
-        w += c ? unit(c, t) : esc(t);
+        w += c ? unit(c, t) : escR(t);
       }
       html += `<span class="w">${w}</span>`;
     }
@@ -1342,6 +1380,7 @@
     // Para el modo Pantalla (screen.js)
     lyricParas: () => lyricParas(),
     paraCita: (i) => paraCita(state.current, i === undefined ? state.para : i),
+    paraBold: (i) => paraBold(state.current, i === undefined ? state.para : i),
     title: () => (state.current ? state.current.title : ''),
     // ---- Multimedia ----
     media: () => MEDIA.slice(),

@@ -139,7 +139,7 @@
     stage.style.left = cfg.l + 'vw'; stage.style.right = cfg.r + 'vw';
     const txt = $('scrText');
     txt.style.fontFamily = FONTS[cfg.font].css;
-    txt.style.fontWeight = cfg.bold ? '700' : '400';
+    txt.style.fontWeight = cfg.bold || (A.paraBold && A.para() !== null && A.para() !== undefined && A.paraBold()) ? '700' : '400';
     const c = content();
     el.classList.toggle('cita', citaNow());
     // multimedia: se ve a pantalla completa (sin controles); con la pantalla en negro, se oculta
