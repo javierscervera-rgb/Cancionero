@@ -50,12 +50,14 @@
       case 'cats': s = find(r.code); if (s) s.categories = r.categories.slice(); break;
       case 'songLists': s = find(r.code); if (s) s.lists = r.lists.slice(); break;
       case 'marks': (r.items || []).forEach((it) => { const x = find(it.code); if (x) { if (it.mark && it.mark !== x.code) x.mark = it.mark; else delete x.mark; } }); break;
+      case 'author': s = find(r.code); if (s) { if (r.author) s.author = r.author; else delete s.author; } break;
       case 'mark': s = find(r.code); if (s) { if (r.mark) s.mark = r.mark; else delete s.mark; } break;
       case 'addSong': {
         if (find(r.song.code)) break;
         let at = -1;
         doc.songs.forEach((x, k) => { if (x.list === r.song.list) at = k; });
         const ns = { code: r.song.code, title: r.song.title, lines: r.song.lines.slice(), variants: [], categories: r.song.categories.slice(), list: r.song.list };
+        if (r.song.author) ns.author = r.song.author;
         if (at < 0) doc.songs.push(ns); else doc.songs.splice(at + 1, 0, ns);
         break;
       }
@@ -123,6 +125,7 @@
     p.cats.forEach((x) => ops.push({ op: 'cats', code: x.code, categories: x.categories }));
     (p.lists || []).forEach((x) => ops.push({ op: 'songLists', code: x.code, lists: x.lists }));
     (p.marks || []).forEach((x) => ops.push({ op: 'mark', code: x.code, mark: x.mark }));
+    (p.authors || []).forEach((x) => ops.push({ op: 'author', code: x.code, author: x.author }));
     p.delCats.forEach((name) => ops.push({ op: 'delCat', name }));
     if (p.settings && typeof p.settings.maxChars === 'number') ops.push({ op: 'settings', maxChars: p.settings.maxChars });
     if (p.sel) Object.entries(p.sel).forEach(([list, codes]) => ops.push({ op: 'sel', list, codes }));
@@ -134,7 +137,7 @@
       for (const op of ops) {
         const r = await post(Object.assign({ by: st.by }, op));
         if (!r.ok && r.error === 'existe') { stale = true; continue; } // otro dispositivo la subió antes
-        if (!r.ok && r.error === 'operacion' && (op.op === 'sel' || op.op === 'listCats' || op.op === 'settings' || op.op === 'songLists' || op.op === 'mark')) continue; // script aún sin esa operación: se guarda más tarde
+        if (!r.ok && r.error === 'operacion' && (op.op === 'sel' || op.op === 'listCats' || op.op === 'settings' || op.op === 'songLists' || op.op === 'mark' || op.op === 'author')) continue; // script aún sin esa operación: se guarda más tarde
         if (!r.ok) { handleError(r.error); failed = true; break; }
         applyOp(st.doc, op);
         if (r.rev !== rev() + 1) stale = true; // alguien más ha guardado entretanto
@@ -188,13 +191,13 @@
 
   function pendingCount() {
     const p = A.pending();
-    return p.addCats.length + p.delCats.length + p.songs.length + p.notes.length + p.cats.length + (p.sel ? Object.keys(p.sel).length : 0) + (p.newSongs ? p.newSongs.length : 0) + (p.settings ? 1 : 0) + (p.lists ? p.lists.length : 0) + (p.marks ? p.marks.length : 0);
+    return p.addCats.length + p.delCats.length + p.songs.length + p.notes.length + p.cats.length + (p.sel ? Object.keys(p.sel).length : 0) + (p.newSongs ? p.newSongs.length : 0) + (p.settings ? 1 : 0) + (p.lists ? p.lists.length : 0) + (p.marks ? p.marks.length : 0) + (p.authors ? p.authors.length : 0);
   }
   function label() {
     const n = pendingCount();
     return n ? '⏳ Guardando ' + n + ' cambio(s) en Drive…' : '☁ Se guarda en Drive para todos';
   }
-  const OPS = { settings: 'cambió el máximo de caracteres', listCats: 'cambió las colecciones de', sel: 'cambió la selección', addSong: 'añadió', lists: 'reordenó las listas', song: 'editó', note: 'comentó', cats: 'cambió colecciones de', songLists: 'cambió los cancioneros de', mark: 'cambió el marcador de', marks: 'cambió los marcadores de', catLists: 'cambió los cancioneros de la colección', addCat: 'creó la colección', delCat: 'borró la colección', init: 'subió el cancionero' };
+  const OPS = { settings: 'cambió el máximo de caracteres', listCats: 'cambió las colecciones de', sel: 'cambió la selección', addSong: 'añadió', lists: 'reordenó las listas', song: 'editó', note: 'comentó', cats: 'cambió colecciones de', songLists: 'cambió los cancioneros de', mark: 'cambió el marcador de', author: 'cambió el autor de', marks: 'cambió los marcadores de', catLists: 'cambió los cancioneros de la colección', addCat: 'creó la colección', delCat: 'borró la colección', init: 'subió el cancionero' };
   function renderUi() {
     const ob = $('cloudOpen');
     if (ob) { ob.hidden = false; ob.textContent = st.ok === false ? '☁ Sin conexión' : '☁ Drive'; }
@@ -205,7 +208,7 @@
     const titleOf = (code) => { const s = st.doc && st.doc.songs.find((x) => x.code === code); return s ? code + ' ' + s.title : code; };
     $('cloudLog').innerHTML = log.slice(-25).reverse().map((l) =>
       `<li><span class="muted">${esc(new Date(l.t).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}</span> ` +
-      `${esc(l.by || 'alguien')} ${esc(OPS[l.op] || l.op)} <b>${esc(['song', 'note', 'cats', 'songLists', 'mark'].includes(l.op) ? titleOf(l.what) : l.what)}</b></li>`).join('') || '<li class="muted">Todavía no hay cambios.</li>';
+      `${esc(l.by || 'alguien')} ${esc(OPS[l.op] || l.op)} <b>${esc(['song', 'note', 'cats', 'songLists', 'mark', 'author'].includes(l.op) ? titleOf(l.what) : l.what)}</b></li>`).join('') || '<li class="muted">Todavía no hay cambios.</li>';
     document.querySelectorAll('.cloud-label').forEach((el) => { el.textContent = label(); });
   }
   function open() { $('cloudMsg').textContent = ''; $('cloudName').value = st.by; dlg.hidden = false; renderUi(); refresh(); }

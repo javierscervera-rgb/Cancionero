@@ -99,6 +99,39 @@
     inp.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') fin(true); if (e.key === 'Escape') fin(false); };
     inp.onblur = () => fin(true);
   }
+  // ---------- Autor de cada canción (editable, guardado en Drive) ----------
+  let authors = store.get('authors', {}); // cambios aún no guardados en Drive
+  if (!authors || typeof authors !== 'object' || Array.isArray(authors)) authors = {};
+  const authorOf = (s) => (s.media ? '' : (authors[s.code] !== undefined ? authors[s.code] : s.author) || '');
+  const cleanAuthor = (v) => String(v || '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 120);
+  function setAuthor(s, v) {
+    v = cleanAuthor(v);
+    if (v === (s.author || '')) delete authors[s.code]; else authors[s.code] = v;
+    store.set('authors', authors);
+    localChanged();
+    if (state.current === s) renderAuthor(s);
+  }
+  function renderAuthor(s) {
+    const el = $('songAuthor');
+    if (!s || s.media) { el.hidden = true; return; }
+    el.hidden = false;
+    const a = authorOf(s);
+    el.classList.toggle('empty', !a);
+    el.textContent = a ? a : '＋ Autor';
+  }
+  function editAuthor() {
+    const s = state.current, el = $('songAuthor');
+    if (!s || s.media || el.querySelector('input')) return;
+    const inp = document.createElement('input');
+    inp.className = 'author-in'; inp.maxLength = 120; inp.value = authorOf(s); inp.placeholder = 'Autor (letra y música)';
+    inp.setAttribute('aria-label', 'Autor de la canción');
+    el.textContent = ''; el.appendChild(inp); inp.focus();
+    let done = false;
+    const fin = (ok) => { if (done) return; done = true; if (ok) setAuthor(s, inp.value); renderAuthor(s); };
+    inp.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') fin(true); if (e.key === 'Escape') fin(false); };
+    inp.onblur = () => fin(true);
+    inp.onclick = (e) => e.stopPropagation();
+  }
   // Cancioneros a los que pertenece una canción: s.lists (si se ha cambiado) o solo el suyo (s.list)
   const listsOf = (s) => (s && Array.isArray(s.lists) && s.lists.length ? s.lists : s ? [s.list] : []);
   const inL = (s, id) => !!(s && (s.media || listsOf(s).includes(id)));
@@ -374,7 +407,7 @@
       inL(s, state.list) &&
       (!state.category || s.categories.includes(state.category)) &&
       (ignoreLetter || !state.letter || initialOf(s.title) === state.letter) &&
-      (!q || s.searchText.includes(q) || s.code.toLowerCase().includes(q) || fold(markOf(s)).includes(q))));
+      (!q || s.searchText.includes(q) || s.code.toLowerCase().includes(q) || fold(markOf(s)).includes(q) || fold(authorOf(s)).includes(q))));
   }
   function setLetter(l) {
     state.letter = l && l !== state.letter ? l : null;
@@ -595,6 +628,8 @@
   }
   $('mediaBtn').onclick = () => setMediaMode(!state.mediaMode);
   $('songCode').onclick = editMark;
+  $('songAuthor').onclick = editAuthor;
+  $('songAuthor').onkeydown = (e) => { if (e.key === 'Enter' && e.target === $('songAuthor')) editAuthor(); };
   function renderSortBtn() {
     const b = $('sortBtn');
     b.innerHTML = state.sort === 'name' ? '<b>A</b>–Z' : '<b>01</b>';
@@ -943,6 +978,7 @@
     if (s.media) { showMediaItem(s); return; }
     $('songCode').textContent = markOf(s);
     $('songCode').title = 'Pulsa para cambiar el marcador';
+    renderAuthor(s);
     $('songTitle').textContent = s.title;
     renderNote(s);
     $('songTags').innerHTML = s.categories.map((c) => `<span class="tag">${esc(catLabel(c))}</span>`).join('') +
@@ -966,6 +1002,7 @@
   function showMediaItem(s) {
     const m = s.media;
     $('songCode').textContent = mediaKind(m);
+    renderAuthor(null);
     $('songCode').title = '';
     $('songTitle').textContent = s.title;
     $('songNote').hidden = true;
@@ -1005,7 +1042,7 @@
     do { n++; code = prefix + String(n).padStart(width, '0'); } while (SONGS.some((x) => x.code === code));
     return code;
   }
-  function createSong(title, text, cats) {
+  function createSong(title, text, cats, author) {
     const list = state.list;
     let lines = text.replace(/\r/g, '').replace(/\t/g, '    ').split('\n').map((l) => l.replace(/\s+$/, ''));
     while (lines.length && !lines[0].trim()) lines.shift();
@@ -1014,9 +1051,11 @@
     if (!lines.length) lines = [''];
     const code = nextCode(list);
     const n = { code, title: title.trim().slice(0, 200), lines, categories: cats.slice(), list };
+    if (cleanAuthor(author)) n.author = cleanAuthor(author);
     newSongs[code] = n; store.set('newSongs', newSongs);
     const addToSel = state.tab === 'sel';
     const s = { code, title: n.title, lines: lines.slice(), variants: [], categories: cats.slice(), list, baseCats: cats.slice() };
+    if (n.author) s.author = n.author;
     ORIG[code] = { title: n.title, lines: lines.slice() };
     SONGS.push(s); s.index = SONGS.length - 1; load(s); applyCats(s); applyMemb(s);
     if (addToSel) setSelection(selCodes(list).concat(code), list);
@@ -1033,6 +1072,7 @@
       <div class="ed-top"><h2>Añadir una canción</h2><button class="icon-btn" id="nsClose" aria-label="Cerrar">✕</button></div>
       <p class="muted small-note" id="nsWhere"></p>
       <label class="field">Título <input id="nsTitle" maxlength="200" autocomplete="off"></label>
+      <label class="field">Autor (opcional) <input id="nsAuthor" maxlength="120" autocomplete="off" placeholder="Letra y música"></label>
       <label class="field">Letra
         <textarea id="nsText" rows="12" spellcheck="false" autocapitalize="off" placeholder="Escribe o pega la letra.&#10;&#10;Una línea en blanco separa los párrafos."></textarea>
       </label>
@@ -1044,7 +1084,7 @@
   document.body.appendChild(nsDlg);
   function openNewSong() {
     $('nsWhere').textContent = 'Se añadirá al ' + listById(state.list).name + ' y se guardará en Drive para todos.';
-    $('nsTitle').value = ''; $('nsText').value = ''; $('nsMsg').textContent = '';
+    $('nsTitle').value = ''; $('nsAuthor').value = ''; $('nsText').value = ''; $('nsMsg').textContent = '';
     $('nsCats').innerHTML = '<span class="sl">Colecciones</span>' + catsFor(state.list).map((c) =>
       `<label class="coll-item"><input type="checkbox" value="${esc(c)}"${c === state.category ? ' checked' : ''}> <span>${esc(catLabel(c))}</span></label>`).join('');
     nsDlg.hidden = false;
@@ -1059,7 +1099,7 @@
     if (!txt.trim()) { $('nsMsg').textContent = 'Escribe la letra.'; $('nsText').focus(); return; }
     const cats = [...$('nsCats').querySelectorAll('input:checked')].map((x) => x.value);
     closeNs();
-    createSong(t, txt, cats);
+    createSong(t, txt, cats, $('nsAuthor').value);
   };
 
   // ---------- Selección: pestañas, deslizar a la derecha y ordenar arrastrando ----------
@@ -1511,6 +1551,7 @@
       out.settings = store.get('settingsPending', null);
       out.lists = Object.entries(memb).map(([code, lists]) => ({ code, lists: lists.slice() }));
       out.marks = Object.entries(marks).map(([code, mark]) => ({ code, mark }));
+      out.authors = Object.entries(authors).map(([code, author]) => ({ code, author }));
       return out;
     },
     // El cancionero tal como viene de la fuente (sin cambios locales), para subirlo la primera vez
@@ -1523,6 +1564,7 @@
           const o = { code: s.code, title: ORIG[s.code].title, lines: ORIG[s.code].lines.slice(), variants: s.variants || [], categories: (s.baseCats || []).slice(), list: s.list };
           if (s.baseLists) o.lists = s.baseLists.slice();
           if (s.mark) o.mark = s.mark;
+          if (s.author) o.author = s.author;
           if (s.comment) o.comment = s.comment;
           return o;
         })
@@ -1532,7 +1574,7 @@
     loadDoc(doc) {
       if (!doc || !Array.isArray(doc.songs) || !Array.isArray(doc.lists) || !doc.songs.length) return;
       const cur = state.current;
-      const sig = (s) => s && JSON.stringify([s.title, s.lines, s.categories, s.comment || '', s.list, s.lists, s.mark, s.edited]);
+      const sig = (s) => s && JSON.stringify([s.title, s.lines, s.categories, s.comment || '', s.list, s.lists, s.mark, s.author, s.edited]);
       const before = sig(cur);
       LISTS.splice(0, LISTS.length, ...doc.lists);
       CATS = LISTS.flatMap((l) => l.cats || []);
@@ -1554,6 +1596,8 @@
         s.list = d.list || LISTS[0].id;
         s.baseLists = Array.isArray(d.lists) && d.lists.length ? d.lists.slice() : null;
         if (d.mark) s.mark = d.mark; else delete s.mark;
+        if (d.author) s.author = d.author; else delete s.author;
+        if (authors[d.code] !== undefined && authors[d.code] === (d.author || '')) delete authors[d.code];
         if (marks[d.code] !== undefined && (marks[d.code] || d.code) === (d.mark || d.code)) delete marks[d.code];
         // el cambio propio ya está en Drive: deja de estar pendiente
         if (memb[d.code] && JSON.stringify(memb[d.code]) === JSON.stringify(s.baseLists)) delete memb[d.code];
@@ -1567,7 +1611,7 @@
       Object.keys(newSongs).forEach((code) => {
         if (inDoc.has(code)) { delete newSongs[code]; return; }
         const n = newSongs[code], sx = byCode[code] || { code };
-        sx.variants = []; sx.list = n.list; sx.baseCats = n.categories.slice(); ORIG[code] = { title: n.title, lines: n.lines.slice() };
+        sx.variants = []; sx.list = n.list; if (n.author) sx.author = n.author; sx.baseCats = n.categories.slice(); ORIG[code] = { title: n.title, lines: n.lines.slice() };
         next.push(sx);
       });
       store.set('newSongs', newSongs);
@@ -1575,6 +1619,7 @@
       reconcile();
       store.set('songLists', memb);
       store.set('marks', marks);
+      store.set('authors', authors);
       SONGS.forEach((s, i) => { s.index = i; load(s); applyCats(s); applyMemb(s); });
       if (state.category && !allCats().includes(state.category)) state.category = null;
       renderLists(); renderChips(); renderList();

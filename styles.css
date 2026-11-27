@@ -1141,3 +1141,10 @@ audio.scr-media { display: none; }
 .ed-name small { color: var(--muted); font-family: var(--mono); font-size: 11px; margin-left: 4px; }
 .ed-cell { display: grid; place-items: center; padding: 8px 0; cursor: pointer; }
 @media (max-width: 560px) { .ed-row { grid-template-columns: minmax(0, 1fr) repeat(var(--n), 54px) 56px; } .ed-lh { font-size: 10px; } }
+
+/* Autor de la canción */
+.song-author { font-size: 14px; color: var(--muted); margin: -2px 0 8px; cursor: pointer; font-style: italic; width: fit-content; }
+.song-author.empty { font-style: normal; opacity: .55; font-size: 12.5px; }
+.song-author:hover { color: var(--accent); opacity: 1; }
+.author-in { width: min(420px, 80vw); font: inherit; font-style: normal; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--accent); background: var(--bg); color: var(--ink); }
+[data-theme="color"] .song-author { margin-left: auto; margin-right: auto; }

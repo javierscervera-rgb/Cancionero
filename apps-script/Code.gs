@@ -184,6 +184,13 @@ function apply_(doc, r) {
       var mk = r.mark.replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 12);
       if (mk && mk !== s.code) s.mark = mk; else delete s.mark;
       return null;
+    case 'author':
+      // autor de la canción (vacío = sin autor)
+      s = find_(doc, r.code);
+      if (!s || typeof r.author !== 'string') return 'cancion';
+      var au = r.author.replace(/[<>\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 120);
+      if (au) s.author = au; else delete s.author;
+      return null;
     case 'marks':
       // varios marcadores a la vez: r.items = [{ code, mark }]
       if (!Array.isArray(r.items) || r.items.length > 1000) return 'marcadores';
@@ -208,6 +215,7 @@ function apply_(doc, r) {
       if (typeof ns.code !== 'string' || !/^[A-Za-z0-9_-]{1,12}$/.test(ns.code) || !nl || typeof ns.title !== 'string' || !ns.title.trim()) return 'cancion';
       if (find_(doc, ns.code)) return 'existe';
       var song = { code: ns.code, title: ns.title.slice(0, 200), lines: nl, variants: [], categories: cats_(ns.categories) || [], list: str_(ns.list, 40) || doc.lists[0].id };
+      if (str_(ns.author, 120).trim()) song.author = str_(ns.author, 120).trim();
       var at = -1;
       for (var k = 0; k < doc.songs.length; k++) if (doc.songs[k].list === song.list) at = k;
       if (at < 0) doc.songs.push(song); else doc.songs.splice(at + 1, 0, song);
