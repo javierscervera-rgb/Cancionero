@@ -1398,7 +1398,17 @@
     // Para el modo Pantalla (screen.js)
     lyricParas: () => lyricParas(),
     paraCita: (i) => paraCita(state.current, i === undefined ? state.para : i),
-    paraBold: (i) => paraBold(state.current, i === undefined ? state.para : i),
+    // en negrita en la pantalla: la estrofa entera entre ** o un trozo cuya letra está toda en negrita
+    paraBold: (i) => {
+      i = i === undefined ? state.para : i;
+      if (paraBold(state.current, i)) return true;
+      const el = document.querySelector('#sheet .para[data-i="' + i + '"]');
+      if (!el) return false;
+      const norm = (t) => t.replace(/\s+/g, '');
+      const all = norm([...el.querySelectorAll('.cl, .lbl, b.ch')].reduce((t, x) => t.replace(x.textContent, ''), el.textContent));
+      const bo = norm([...el.querySelectorAll('b.bo')].map((x) => x.textContent).join(''));
+      return !!all && all === bo;
+    },
     title: () => (state.current ? state.current.title : ''),
     // ---- Multimedia ----
     media: () => MEDIA.slice(),
