@@ -50,6 +50,10 @@
       case 'cats': s = find(r.code); if (s) s.categories = r.categories.slice(); break;
       case 'songLists': s = find(r.code); if (s) s.lists = r.lists.slice(); break;
       case 'marks': (r.items || []).forEach((it) => { const x = find(it.code); if (x) { if (it.mark && it.mark !== x.code) x.mark = it.mark; else delete x.mark; } }); break;
+      case 'seed':
+        doc.seeds = doc.seeds || {}; doc.seeds[r.id] = true;
+        (r.authors || []).forEach((it) => { const x = find(it.code); if (x && !x.author && it.author) x.author = it.author; });
+        break;
       case 'author': s = find(r.code); if (s) { if (r.author) s.author = r.author; else delete s.author; } break;
       case 'mark': s = find(r.code); if (s) { if (r.mark) s.mark = r.mark; else delete s.mark; } break;
       case 'addSong': {
@@ -126,6 +130,12 @@
     (p.lists || []).forEach((x) => ops.push({ op: 'songLists', code: x.code, lists: x.lists }));
     (p.marks || []).forEach((x) => ops.push({ op: 'mark', code: x.code, mark: x.mark }));
     (p.authors || []).forEach((x) => ops.push({ op: 'author', code: x.code, author: x.author }));
+    // autores encontrados (una sola vez para todo el cancionero)
+    const sa = window.SEED_AUTHORS;
+    if (sa && !(st.doc.seeds && st.doc.seeds[sa.id]) && !st.seedTried) {
+      st.seedTried = true;
+      ops.push({ op: 'seed', id: sa.id, authors: Object.entries(sa.items).map(([code, author]) => ({ code, author })) });
+    }
     p.delCats.forEach((name) => ops.push({ op: 'delCat', name }));
     if (p.settings && typeof p.settings.maxChars === 'number') ops.push({ op: 'settings', maxChars: p.settings.maxChars });
     if (p.sel) Object.entries(p.sel).forEach(([list, codes]) => ops.push({ op: 'sel', list, codes }));
@@ -136,8 +146,9 @@
     try {
       for (const op of ops) {
         const r = await post(Object.assign({ by: st.by }, op));
-        if (!r.ok && r.error === 'existe') { stale = true; continue; } // otro dispositivo la subió antes
-        if (!r.ok && r.error === 'operacion' && (op.op === 'sel' || op.op === 'listCats' || op.op === 'settings' || op.op === 'songLists' || op.op === 'mark' || op.op === 'author')) continue; // script aún sin esa operación: se guarda más tarde
+        if (!r.ok && r.error === 'existe') { stale = true; continue; }
+        if (!r.ok && r.error === 'hecho') { stale = true; continue; } // otro dispositivo ya lo subió // otro dispositivo la subió antes
+        if (!r.ok && r.error === 'operacion' && (op.op === 'sel' || op.op === 'listCats' || op.op === 'settings' || op.op === 'songLists' || op.op === 'mark' || op.op === 'author' || op.op === 'seed')) continue; // script aún sin esa operación: se guarda más tarde
         if (!r.ok) { handleError(r.error); failed = true; break; }
         applyOp(st.doc, op);
         if (r.rev !== rev() + 1) stale = true; // alguien más ha guardado entretanto
@@ -197,7 +208,7 @@
     const n = pendingCount();
     return n ? '⏳ Guardando ' + n + ' cambio(s) en Drive…' : '☁ Se guarda en Drive para todos';
   }
-  const OPS = { settings: 'cambió el máximo de caracteres', listCats: 'cambió las colecciones de', sel: 'cambió la selección', addSong: 'añadió', lists: 'reordenó las listas', song: 'editó', note: 'comentó', cats: 'cambió colecciones de', songLists: 'cambió los cancioneros de', mark: 'cambió el marcador de', author: 'cambió el autor de', marks: 'cambió los marcadores de', catLists: 'cambió los cancioneros de la colección', addCat: 'creó la colección', delCat: 'borró la colección', init: 'subió el cancionero' };
+  const OPS = { settings: 'cambió el máximo de caracteres', listCats: 'cambió las colecciones de', sel: 'cambió la selección', addSong: 'añadió', lists: 'reordenó las listas', song: 'editó', note: 'comentó', cats: 'cambió colecciones de', songLists: 'cambió los cancioneros de', mark: 'cambió el marcador de', seed: 'añadió datos a', author: 'cambió el autor de', marks: 'cambió los marcadores de', catLists: 'cambió los cancioneros de la colección', addCat: 'creó la colección', delCat: 'borró la colección', init: 'subió el cancionero' };
   function renderUi() {
     const ob = $('cloudOpen');
     if (ob) { ob.hidden = false; ob.textContent = st.ok === false ? '☁ Sin conexión' : '☁ Drive'; }

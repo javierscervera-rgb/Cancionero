@@ -114,7 +114,7 @@ function doPost(e) {
     doc.rev = (doc.rev || 0) + 1;
     doc.updated = new Date().toISOString();
     doc.log = Array.isArray(doc.log) ? doc.log : [];
-    doc.log.push({ t: doc.updated, op: req.op, what: str_(req.code || req.name || req.list || (req.items ? req.items.length + ' canciones' : '') || (req.media && req.media.name) || req.id || '', 60), by: str_(req.by, 40) });
+    doc.log.push({ t: doc.updated, op: req.op, what: str_(req.code || req.name || req.list || (req.items ? req.items.length + ' canciones' : '') || (req.authors ? 'autores de ' + req.authors.length + ' canciones' : '') || (req.media && req.media.name) || req.id || '', 60), by: str_(req.by, 40) });
     if (doc.log.length > 500) doc.log = doc.log.slice(-500);
     file_().setContent(JSON.stringify(doc));
     props.setProperty('REV', String(doc.rev));
@@ -183,6 +183,19 @@ function apply_(doc, r) {
       if (!s || typeof r.mark !== 'string') return 'cancion';
       var mk = r.mark.replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 12);
       if (mk && mk !== s.code) s.mark = mk; else delete s.mark;
+      return null;
+    case 'seed':
+      // datos que se añaden una sola vez (p. ej. autores encontrados), solo donde falten
+      var sid = str_(r.id, 40);
+      if (!sid) return 'seed';
+      doc.seeds = doc.seeds && typeof doc.seeds === 'object' ? doc.seeds : {};
+      if (doc.seeds[sid]) return 'hecho';
+      (Array.isArray(r.authors) ? r.authors : []).slice(0, 1000).forEach(function (it) {
+        var x = it && typeof it.code === 'string' ? find_(doc, it.code) : null;
+        var a2 = it && typeof it.author === 'string' ? it.author.replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 120) : '';
+        if (x && a2 && !x.author) x.author = a2;
+      });
+      doc.seeds[sid] = new Date().toISOString();
       return null;
     case 'author':
       // autor de la canción (vacío = sin autor)
