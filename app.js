@@ -707,6 +707,20 @@
     if (k === L[L.length - 1]) text = text.replace(/\]\s*$/, '');
     return text;
   }
+  // Lo mismo que lyricParas pero en HTML, con lo que va entre ** en negrita (para la pantalla completa)
+  function lyricHtml(s, pi) {
+    if (!s || !s.paras[pi]) return [];
+    const st = { b: boldOpenAt(s, pi) };
+    return s.paras[pi].filter((i) => !s.chordFlags[i] && !isLabelLine(s.lines[i])).map((i) => {
+      const t = citaStrip(s, pi, i, s.lines[i]).replace(/\s+/g, ' ').trim();
+      let h = '';
+      t.split('**').forEach((seg, k) => {
+        if (k > 0) st.b = !st.b;
+        if (seg) h += st.b ? '<b>' + esc(seg) + '</b>' : esc(seg);
+      });
+      return h.replace(/<\/b>(\s*)<b>/g, '$1');
+    }).filter((h) => h.replace(/<[^>]+>/g, '').trim());
+  }
   // Solo la letra de cada párrafo (para el modo Pantalla)
   function lyricParas(s) {
     s = s || state.current;
@@ -1397,6 +1411,7 @@
     refit: fitSheet,
     // Para el modo Pantalla (screen.js)
     lyricParas: () => lyricParas(),
+    lyricHtml: (i) => lyricHtml(state.current, i === undefined ? state.para : i),
     paraCita: (i) => paraCita(state.current, i === undefined ? state.para : i),
     // en negrita en la pantalla: la estrofa entera entre ** o un trozo cuya letra está toda en negrita
     paraBold: (i) => {

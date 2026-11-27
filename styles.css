@@ -1155,3 +1155,9 @@ audio.scr-media { display: none; }
 .sheet small.rep { font-size: .85em; }
 .sheet .para.cita { font-size: .92em; }
 .sheet b.bo { font-weight: 700; }
+
+.scr-text b { font-weight: 800; }
+
+/* Alineación del texto en la pantalla completa */
+.scr-align .sb { padding: 0 8px; display: inline-grid; place-items: center; }
+.scr-align .sb[aria-pressed="true"] { background: #fff; color: #111; }

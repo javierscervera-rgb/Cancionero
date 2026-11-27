@@ -21,7 +21,8 @@
     playfair: { label: 'Playfair Display', css: '"Playfair Display", serif', g: 'Playfair+Display:wght@500;700' }
   };
 
-  const cfg = Object.assign({ size: 7, t: 8, b: 8, l: 6, r: 6, font: 'sans', bold: false }, store.get('screen', {}));
+  const cfg = Object.assign({ size: 7, t: 8, b: 8, l: 6, r: 6, font: 'sans', bold: false, align: 'center' }, store.get('screen', {}));
+  if (!['left', 'center', 'right'].includes(cfg.align)) cfg.align = 'center';
   if (!FONTS[cfg.font]) cfg.font = 'sans';
   const save = () => store.set('screen', cfg);
   let on = false, clean = false, uiTimer = null, guideTimer = null;
@@ -50,6 +51,11 @@
           <button class="sb" data-k="size" data-d="-0.5" title="Letra más pequeña">A−</button>
           <span class="sv" id="scrSize"></span>
           <button class="sb" data-k="size" data-d="0.5" title="Letra más grande">A+</button>
+        </span>
+        <span class="sg scr-align" role="group" aria-label="Alineación del texto">
+          <button class="sb" data-align="left" title="Texto a la izquierda" aria-label="Texto a la izquierda"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 10h10M4 14h16M4 18h10"/></svg></button>
+          <button class="sb" data-align="center" title="Texto centrado" aria-label="Texto centrado"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 10h10M4 14h16M7 18h10"/></svg></button>
+          <button class="sb" data-align="right" title="Texto a la derecha" aria-label="Texto a la derecha"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M10 10h10M4 14h16M10 18h10"/></svg></button>
         </span>
         <button class="sb" id="scrCfg" aria-expanded="false" title="Fuente y negrita">Aa</button>
         <button class="sb accent" id="scrFs" title="Pantalla completa (F)">⛶<span class="txt"> Pantalla completa</span></button>
@@ -89,10 +95,10 @@
   const curChunks = () => { const i = A.para(); return i === null || i === undefined ? [] : chunksOf(A.lyricParas()[i] || []); };
   // Solo se proyectan estrofas, nunca el título. Al cambiar de canción (sin párrafo elegido)
   // la pantalla no cambia: sigue la última estrofa hasta que se marque una de la nueva canción.
-  let shown = '', shownCita = false, shownMedia = null;
+  let shown = '', shownCita = false, shownMedia = null, shownHtml = '';
   function content() {
     const i = A.para();
-    if (A.blank && A.blank()) return '';
+    if (A.blank && A.blank()) { return ''; }
     if (!A.title() || i === null || i === undefined) return shownMedia ? '' : shown;
     // un archivo multimedia proyectado
     const mc = A.mediaCur && A.mediaCur();
@@ -100,6 +106,9 @@
     shownMedia = null;
     const ch = curChunks();
     shown = (ch[Math.min(A.sub(), ch.length - 1)] || []).join('\n');
+    // con negritas (**): el mismo texto en HTML
+    const hl = A.lyricHtml ? A.lyricHtml() : [];
+    shownHtml = hl.some((h) => h.includes('<b>')) ? hl.join('\n') : '';
     shownCita = !!(A.paraCita && A.paraCita());
     return shown;
   }
@@ -139,6 +148,9 @@
     stage.style.left = cfg.l + 'vw'; stage.style.right = cfg.r + 'vw';
     const txt = $('scrText');
     txt.style.fontFamily = FONTS[cfg.font].css;
+    // alineación: el texto y el bloque se pegan a la izquierda, al centro o a la derecha del cuadro
+    txt.style.textAlign = cfg.align;
+    stage.style.justifyContent = cfg.align === 'left' ? 'flex-start' : cfg.align === 'right' ? 'flex-end' : 'center';
     txt.style.fontWeight = cfg.bold || (A.paraBold && A.para() !== null && A.para() !== undefined && A.paraBold()) ? '700' : '400';
     const c = content();
     el.classList.toggle('cita', citaNow());
@@ -146,9 +158,12 @@
     const showM = shownMedia && !(A.blank && A.blank());
     el.classList.toggle('media-on', !!showM);
     if (window.Media) { if (shownMedia) window.Media.showOnScreen($('scrMediaBox'), shownMedia); else window.Media.hideOnScreen(); }
-    if (txt.textContent !== c) {
+    const html = c && c === shown ? shownHtml : '';
+    const key = html || c;
+    if (txt.dataset.k !== key) {
+      txt.dataset.k = key;
       txt.classList.remove('show'); void txt.offsetWidth;
-      txt.textContent = c;
+      if (html) txt.innerHTML = html; else txt.textContent = c;
       txt.classList.add('show');
     }
     const n = A.paraCount(), i = A.para();
@@ -158,6 +173,7 @@
     placeLines();
     sel.value = cfg.font;
     $('scrBold').setAttribute('aria-pressed', String(cfg.bold));
+    el.querySelectorAll('[data-align]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.align === cfg.align)));
     $('scrBlank').setAttribute('aria-pressed', String(!!(A.blank && A.blank())));
     loadFont(cfg.font);
     fit();
@@ -233,6 +249,7 @@
   });
   sel.onchange = () => { cfg.font = sel.value; save(); render(); };
   $('scrBold').onclick = (e) => { e.stopPropagation(); cfg.bold = !cfg.bold; save(); render(); };
+  el.querySelectorAll('[data-align]').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); cfg.align = b.dataset.align; save(); render(); }; });
   $('scrExit').onclick = (e) => { e.stopPropagation(); close(); };
   $('scrFs').onclick = (e) => { e.stopPropagation(); enterFs(); };
   function setCfgOpen(o) {
