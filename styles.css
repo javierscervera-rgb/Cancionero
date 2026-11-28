@@ -1161,3 +1161,6 @@ audio.scr-media { display: none; }
 /* Alineación del texto en la pantalla completa */
 .scr-align .sb { padding: 0 8px; display: inline-grid; place-items: center; }
 .scr-align .sb[aria-pressed="true"] { background: #fff; color: #111; }
+
+/* Anotaciones en la línea de acordes (x2, punteando, rasgado…) */
+.sheet .ch .ann, .sheet .cl .ann { font-weight: 500; font-style: italic; color: var(--muted); font-size: .9em; }

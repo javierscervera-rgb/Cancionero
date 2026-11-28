@@ -765,7 +765,7 @@
             out.skip = nx;
             return;
           }
-          out.push('<span class="cl">' + groups.map((g) => g.chord ? `<b class="ch">${esc(g.text)}</b>` : esc(g.text)).join('') + '</span>');
+          out.push('<span class="cl">' + groups.map((g) => g.chord ? `<b class="ch">${esc(g.text)}</b>` : g.text.trim() ? `<i class="ann">${esc(g.text)}</i>` : esc(g.text)).join('') + '</span>');
         } else {
           if (out.skip === i) return;
           out.push(isLabelLine(line) ? `<span class="lbl">${esc(line)}</span>` : repEsc(null, bst)(citaStrip(s, pi, i, line)));
@@ -855,7 +855,19 @@
     for (let j = 0; j < lyric.length; j++) pre.push(pre[j] + wReg(lyric[j]));
     const chords = [];
     let x = 0;
+    // anotaciones en la línea de acordes (x2, punteando, rasgado…): van encima de la letra como un acorde
+    const gs = [];
     groups.forEach((g) => {
+      const last = gs[gs.length - 1];
+      if (!g.chord && g.text.trim() && last && last.ann && !/^\s/.test(g.text)) last.text += g.text;
+      else if (!g.chord && g.text.trim()) gs.push({ text: g.text, chord: true, ann: true });
+      else gs.push(g);
+    });
+    // una anotación al principio de la línea (antes del primer acorde) va en su propia línea, encima
+    let lead = '';
+    const firstChord = gs.findIndex((g) => g.chord && !g.ann);
+    gs.forEach((g, gi) => {
+      if (g.ann && (firstChord < 0 ? gi === gs.findIndex((q) => q.ann) && firstChord !== -1 : gi < firstChord)) { lead += (lead ? ' ' : '') + g.text; x += wReg(g.text); return; }
       if (g.chord) {
         let at = lyric.length;
         if (x <= pre[lyric.length] + 2) {
@@ -864,8 +876,9 @@
           if (at === lyric.length && x < pre[lyric.length] - 1) at = lyric.length - 1;
         }
         const prev = chords[chords.length - 1];
-        if (prev && prev.at === at) prev.text += ' ' + g.text; else chords.push({ at, text: g.text });
-        x += wBold(g.text);
+        const part = { t: g.text, ann: !!g.ann };
+        if (prev && prev.at === at) { prev.text += ' ' + g.text; prev.parts.push(part); } else chords.push({ at, text: g.text, parts: [part] });
+        x += g.ann ? wReg(g.text) : wBold(g.text);
       } else x += wReg(g.text);
     });
     // el acorde solo ocupa ancho propio si chocaría con el siguiente; si no, vuela sobre la letra
@@ -875,7 +888,7 @@
       const need = wBold(c.text) + 6;
       c.min = need > room ? (need / 16).toFixed(2) : 0;
     });
-    const unit = (c, t) => `<span class="u"${c.min ? ` style="min-width:${c.min}em"` : ''}><b class="ch">${esc(c.text)}</b>${escR(t)}</span>`;
+    const unit = (c, t) => `<span class="u"${c.min ? ` style="min-width:${c.min}em"` : ''}><b class="ch">${c.parts.map((p) => (p.ann ? `<i class="ann">${esc(p.t)}</i>` : esc(p.t))).join(' ')}</b>${escR(t)}</span>`;
     let html = '';
     const re = /(\s+)|(\S+)/g;
     let m;
@@ -893,7 +906,7 @@
       html += `<span class="w">${w}</span>`;
     }
     chords.filter((c) => c.at >= lyric.length).forEach((c) => { html += ' ' + `<span class="w">${unit(c, '')}</span>`; });
-    return `<span class="pair">${html}</span>`;
+    return (lead ? `<span class="cl"><i class="ann">${esc(lead)}</i></span>\n` : '') + `<span class="pair">${html}</span>`;
   }
 
   function fitSheet() {
